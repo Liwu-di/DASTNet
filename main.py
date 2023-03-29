@@ -171,9 +171,9 @@ def test(mask):
 
         mae_test, rmse_test, mape_test = masked_loss(scaler.inverse_transform(pred), scaler.inverse_transform(label))
 
-        test_mae.append(mae_test * mask.item())
-        test_rmse.append(rmse_test * mask.item())
-        test_mape.append(mape_test * mask.item())
+        test_mae.append((mae_test * mask).item())
+        test_rmse.append((rmse_test * mask).item())
+        test_mape.append((mape_test * mask).item())
 
     test_rmse = np.mean(test_rmse)
     test_mae = np.mean(test_mae)
