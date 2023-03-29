@@ -11,6 +11,9 @@ from utils.vec import generate_vector
 from model import DASTNet, Domain_classifier_DG
 from PaperCrawlerUtil.common_util import *
 from PaperCrawlerUtil.research_util import *
+import ast
+
+
 
 def arg_parse(parser):
     parser.add_argument('--dataset', type=str, default='4', help='dataset')
