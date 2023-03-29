@@ -293,7 +293,7 @@ def load_graphdata_channel1(args, feat_dir, time, scaler=None, visualize=False, 
     return train_X, train_Y, val_X, val_Y, test_X, test_Y, max_val, scaler
 
 
-def masked_loss(y_pred, y_true):
+def masked_loss(y_pred, y_true, maskp=None):
     mask_true = (y_true > 0.01).float()
     mask_pred = (y_pred > 0.01).float()
     mask = torch.mul(mask_true, mask_pred)
@@ -305,6 +305,8 @@ def masked_loss(y_pred, y_true):
     mse_loss = torch.square(y_pred - y_true)
     y_true = torch.where(y_true < torch.tensor(1e-6, dtype=y_true.dtype, device=y_true.device), torch.tensor(1, dtype=y_true.dtype, device=y_true.device), y_true)
     mape_loss = mae_loss / y_true
+    if maskp is not None:
+        mask = maskp
     mae_loss = mae_loss * mask
     mse_loss = mse_loss * mask
     mape_loss = mape_loss * mask

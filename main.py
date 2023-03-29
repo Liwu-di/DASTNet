@@ -55,6 +55,15 @@ def arg_parse(parser):
     return parser.parse_args()
 
 
+def select_mask(a):
+    if a == 420:
+        return th_maskdc
+    elif a == 476:
+        return th_maskchi
+    elif a == 460:
+        return th_maskny
+
+
 def train(dur, model, optimizer, total_step, start_step):
     t0 = time.time()
     train_mae, val_mae, train_rmse, val_rmse, train_acc = list(), list(), list(), list(), list()
@@ -65,6 +74,7 @@ def train(dur, model, optimizer, total_step, start_step):
         domain_classifier.train()
 
     for i, (feat, label) in enumerate(train_dataloader.get_iterator()):
+        mask = select_mask(feat.shape[2])
         Reverse = False
         if i > 0:
             if train_acc[-1] > 0.333333:
@@ -112,7 +122,7 @@ def train(dur, model, optimizer, total_step, start_step):
         if type == 'pretrain':
             train_correct = pems04_correct + pems07_correct + pems08_correct
 
-        mae_train, rmse_train, mape_train = masked_loss(scaler.inverse_transform(pred), scaler.inverse_transform(label))
+        mae_train, rmse_train, mape_train = masked_loss(scaler.inverse_transform(pred), scaler.inverse_transform(label), maskp=mask)
 
         if type == 'pretrain':
             loss = mae_train + args.beta * (args.theta * domain_loss)
@@ -135,6 +145,7 @@ def train(dur, model, optimizer, total_step, start_step):
     model.eval()
 
     for i, (feat, label) in enumerate(val_dataloader.get_iterator()):
+        mask = select_mask(feat.shape[2])
         feat = torch.FloatTensor(feat).to(device)
         label = torch.FloatTensor(label).to(device)
         if torch.sum(scaler.inverse_transform(label)) <= 0.001:
@@ -142,16 +153,16 @@ def train(dur, model, optimizer, total_step, start_step):
         pred = model(vec_pems04, vec_pems07, vec_pems08, feat, True)
         pred = pred.transpose(1, 2).reshape((-1, feat.size(2)))
         label = label.reshape((-1, label.size(2)))
-        mae_val, rmse_val, mape_val = masked_loss(scaler.inverse_transform(pred), scaler.inverse_transform(label))
+        mae_val, rmse_val, mape_val = masked_loss(scaler.inverse_transform(pred), scaler.inverse_transform(label), maskp=mask)
         val_mae.append(mae_val.item())
         val_rmse.append(rmse_val.item())
 
-    test_mae, test_rmse, test_mape = test(th_mask)
+    test_mae, test_rmse, test_mape = test()
     dur.append(time.time() - t0)
     return np.mean(train_mae), np.mean(train_rmse), np.mean(val_mae), np.mean(val_rmse), test_mae, test_rmse, test_mape, np.mean(train_acc)
 
 
-def test(mask):
+def test():
     if type == 'pretrain':
         domain_classifier.eval()
     model.eval()
@@ -161,7 +172,7 @@ def test(mask):
     for i, (feat, label) in enumerate(test_dataloader.get_iterator()):
         feat = torch.FloatTensor(feat).to(device)
         label = torch.FloatTensor(label).to(device)
-
+        mask = select_mask(feat.shape[2])
         if torch.sum(scaler.inverse_transform(label)) <= 0.001:
             continue
 
@@ -169,11 +180,11 @@ def test(mask):
         pred = pred.transpose(1, 2).reshape((-1, feat.size(2)))
         label = label.reshape((-1, label.size(2)))
 
-        mae_test, rmse_test, mape_test = masked_loss(scaler.inverse_transform(pred), scaler.inverse_transform(label))
+        mae_test, rmse_test, mape_test = masked_loss(scaler.inverse_transform(pred), scaler.inverse_transform(label), maskp=mask)
 
-        test_mae.append((mae_test * mask).item())
-        test_rmse.append((rmse_test * mask).item())
-        test_mape.append((mape_test * mask).item())
+        test_mae.append(mae_test.item())
+        test_rmse.append(rmse_test.item())
+        test_mape.append(mape_test.item())
 
     test_rmse = np.mean(test_rmse)
     test_mae = np.mean(test_mae)
@@ -237,8 +248,14 @@ if args.labelrate > 100:
 adj_pems04, adj_pems07, adj_pems08 = load_all_adj(device)
 vec_pems04 = vec_pems07 = vec_pems08 = None, None, None
 dc = np.load("./data/DC/{}DC_{}.npy".format(args.dataname, args.datatype))
-mask = dc.sum(0) > 0
-th_mask = torch.from_numpy(mask).reshape(1, 420).to(device)
+dcmask = dc.sum(0) > 0
+th_maskdc = dcmask.reshape(1, 420)
+chi = np.load("./data/CHI/{}CHI_{}.npy".format(args.dataname, args.datatype))
+chimask = chi.sum(0) > 0
+th_maskchi = chimask.reshape(1, 476)
+ny = np.load("./data/NY/{}NY_{}.npy".format(args.dataname, args.datatype))
+nymask = ny.sum(0) > 0
+th_maskny = nymask.reshape(1, 460)
 cur_dir = os.getcwd()
 if cur_dir[-2:] == 'sh':
     cur_dir = cur_dir[:-2]
@@ -403,5 +420,5 @@ if args.labelrate != 0:
     model.load_state_dict(test_state['model'])
     optimizer.load_state_dict(test_state['optim'])
 
-test_mae, test_rmse, test_mape = test(th_mask)
+test_mae, test_rmse, test_mape = test()
 print(f'mae: {test_mae: .4f}, rmse: {test_rmse: .4f}, mape: {test_mape * 100: .4f}\n\n')
