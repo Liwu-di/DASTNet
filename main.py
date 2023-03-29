@@ -146,7 +146,7 @@ def train(dur, model, optimizer, total_step, start_step):
         val_mae.append(mae_val.item())
         val_rmse.append(rmse_val.item())
 
-    test_mae, test_rmse, test_mape = test()
+    test_mae, test_rmse, test_mape = test(th_mask)
     dur.append(time.time() - t0)
     return np.mean(train_mae), np.mean(train_rmse), np.mean(val_mae), np.mean(val_rmse), test_mae, test_rmse, test_mape, np.mean(train_acc)
 
