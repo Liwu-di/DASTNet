@@ -9,6 +9,8 @@ from utils.funcs import load_data, load_all_adj
 from utils.funcs import masked_loss
 from utils.vec import generate_vector
 from model import DASTNet, Domain_classifier_DG
+from PaperCrawlerUtil.common_util import *
+from PaperCrawlerUtil.research_util import *
 
 def arg_parse(parser):
     parser.add_argument('--dataset', type=str, default='4', help='dataset')
@@ -39,6 +41,13 @@ def arg_parse(parser):
     parser.add_argument('--test', action='store_true', default=False, help='test')
     parser.add_argument('--train', action='store_true', default=False, help='train')
     parser.add_argument('--etype', type=str, default="gin", choices=["gin"], help='feature type')
+    parser.add_argument('--dataname', type=str, default='Taxi', help='Within [Bike, Taxi]')
+    parser.add_argument('--datatype', type=str, default='pickup', help='Within [pickup, dropoff]')
+    parser.add_argument('--data_amount', type=int, default=3, help='0: full data, 30/7/3 correspond to days of data')
+    parser.add_argument('--need_third', type=int, default=0)
+    parser.add_argument("--c", type=str, default="default", help="research record")
+    parser.add_argument("--machine_code", type=str, default="my-1060", help="code of machine")
+    parser.add_argument("--need_remark", type=int, default=0)
     return parser.parse_args()
 
 
@@ -211,7 +220,10 @@ def model_train(args, model, optimizer):
 args = arg_parse(argparse.ArgumentParser())
 device = torch.device("cuda:"+str(args.device) if torch.cuda.is_available() else "cpu")
 print(f'device: {device}')
-
+if args.c != "default":
+    c = ast.literal_eval(args.c)
+    record = ResearchRecord(**c)
+    record_id = record.insert(__file__, get_timestamp(), args.__str__())
 torch.manual_seed(args.seed)
 np.random.seed(args.seed)
 
@@ -231,6 +243,16 @@ pems07_emb_path = os.path.join('{}'.format(cur_dir), 'embeddings', 'node2vec', '
                             '{}_vecdim.pkl'.format(args.vec_dim))
 pems08_emb_path = os.path.join('{}'.format(cur_dir), 'embeddings', 'node2vec', 'pems08',
                              '{}_vecdim.pkl'.format(args.vec_dim))
+
+for i in [pems04_emb_path, pems07_emb_path, pems08_emb_path]:
+    a = i.split("/")
+    b = []
+    for i in a:
+        if "pkl" in i:
+            continue
+        else:
+            b.append(i)
+    local_path_generate(folder_name="/".join(b), create_folder_only=True)
 
 if os.path.exists(pems04_emb_path):
     print(f'Loading pems04 embedding...')
@@ -267,6 +289,7 @@ else:
     vec_pems08 = vec_pems08.to(device)
     print(f'Saving pems08 embedding...')
     torch.save(vec_pems08.cpu(), pems08_emb_path)
+
 print(f'Successfully load embeddings, 4: {vec_pems04.shape}, 7: {vec_pems07.shape}, 8: {vec_pems08.shape}')
 
 domain_criterion = torch.nn.NLLLoss()
@@ -288,6 +311,15 @@ type = 'pretrain'
 pretrain_model_path = os.path.join('{}'.format(cur_dir), 'pretrained', 'transfer_models',
                                    '{}'.format(args.dataset), '{}_prelen'.format(args.pre_len),
                                    'flow_model4_{}_epoch_{}.pkl'.format(args.model, args.epoch))
+
+a = pretrain_model_path.split("/")
+b = []
+for i in a:
+    if "pkl" not in i:
+        b.append(i)
+local_path_generate("/".join(b), create_folder_only=True)
+
+
 if os.path.exists(pretrain_model_path):
     print(f'Loading pretrained model at {pretrain_model_path}')
     state = torch.load(pretrain_model_path, map_location='cpu')
@@ -350,7 +382,7 @@ elif args.dataset == '7':
 elif args.dataset == '8':
     g = vec_pems08
 
-train_dataloader, val_dataloader, test_dataloader, adj, max_speed, scaler = load_data(args)
+train_dataloader, val_dataloader, test_dataloader, adj, max_speed, scaler = load_data(args, cut=True)
 model = DASTNet(input_dim=args.vec_dim, hidden_dim=args.hidden_dim, encode_dim=args.enc_dim,
                     device=device, batch_size=args.batch_size, etype=args.etype, pre_len=args.pre_len,
                     dataset=args.dataset, ft_dataset=args.dataset,
@@ -366,4 +398,4 @@ if args.labelrate != 0:
     optimizer.load_state_dict(test_state['optim'])
 
 test_mae, test_rmse, test_mape = test()
-print(f'mae: {test_mae: .2f}, rmse: {test_rmse: .2f}, mape: {test_mape * 100: .2f}\n\n')
+print(f'mae: {test_mae: .4f}, rmse: {test_rmse: .4f}, mape: {test_mape * 100: .4f}\n\n')

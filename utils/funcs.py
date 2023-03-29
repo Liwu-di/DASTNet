@@ -16,14 +16,46 @@ class StandardScaler:
     def inverse_transform(self, data):
         return (data * self.std) + self.mean
 
+def add_self_loop(adj):
+    # add self loop to an adjacency
+    num_nodes = adj.shape[0]
+    for i in range(num_nodes):
+        adj[i][i] = 1
+    return adj
+
+def idx_2d2id(idx, shape):
+    return idx[0] * shape[1] + idx[1]
+
+def idx_1d22d(idx, shape):
+    idx0d = int(idx // shape[1])
+    idx1d = int(idx % shape[1])
+    return idx0d, idx1d
+
 
 def load_all_adj(device):
+    dirs = "./data/{}/{}_roads.npy"
+    ny, chi, dc = None, None, None
+    for i in ["NY", "CHI", "DC"]:
+        t = dirs.format(i, i)
+        t = np.load(t)
+        t = t.reshape((t.shape[0] * t.shape[1], t.shape[0] * t.shape[1]))
+        t = np.where(t >= 1, 1, t)
+        t = add_self_loop(t)
+        for m in range(t.shape[0]):
+            for n in range(t.shape[1]):
+                a, b = idx_1d22d(m, t.shape)
+                c, d = idx_1d22d(n, t.shape)
+                dis = abs(a - c) + abs(b - d)
+                if t[m][n] - 0 > 1e-6 and dis != 0:
+                    t[m][n] = t[m][n] / dis
+        if t.shape[0] == 460:
+            ny = t
+        elif t.shape[0] == 476:
+            chi = t
+        elif t.shape[0] == 420:
+            dc = t
 
-    adj_pems04 = get_adjacency_matrix(distance_df_filename="./data/PEMS04/PEMS04.csv", num_of_vertices=307)
-    adj_pems07 = get_adjacency_matrix(distance_df_filename="./data/PEMS07/PEMS07.csv", num_of_vertices=883)
-    adj_pems08 = get_adjacency_matrix(distance_df_filename="./data/PEMS08/PEMS08.csv", num_of_vertices=170)
-
-    return torch.tensor(adj_pems04).to(device), torch.tensor(adj_pems07).to(device), torch.tensor(adj_pems08).to(device)
+    return torch.tensor(ny).to(device), torch.tensor(chi).to(device), torch.tensor(dc).to(device)
 
 
 def load_all_adj2(device):
@@ -34,7 +66,7 @@ def load_all_adj2(device):
 
 
 
-def load_data(args, scaler=None, visualize=False, distribution=False):
+def load_data(args, scaler=None, visualize=False, distribution=False, cut=False):
     DATA_PATHS = {
         "4": {"feat": "./data/PEMS04/PEMS04.npz", "adj": "./data/PEMS04/PEMS04.csv"},
         "7": {"feat": "./data/PEMS07/PEMS07.npz", "adj": "./data/PEMS07/PEMS07.csv"},
@@ -57,7 +89,7 @@ def load_data(args, scaler=None, visualize=False, distribution=False):
         adj_dir = DATA_PATHS['8']['adj']
         num_of_vertices = 170
 
-    train_X, train_Y, val_X, val_Y, test_X, test_Y, max_speed, scaler = load_graphdata_channel1(args, feat_dir, time, scaler, visualize=visualize)
+    train_X, train_Y, val_X, val_Y, test_X, test_Y, max_speed, scaler = load_graphdata_channel1(args, time, scaler, visualize=visualize, cut=cut)
     train_dataloader = MyDataLoader(torch.FloatTensor(train_X), torch.FloatTensor(train_Y),
                                     batch_size=args.batch_size)
     val_dataloader = MyDataLoader(torch.FloatTensor(val_X), torch.FloatTensor(val_Y), batch_size=args.batch_size)
@@ -129,19 +161,21 @@ def load_distribution(feat_dir):
 
     return data
 
-def load_graphdata_channel1(args, feat_dir, time, scaler=None, visualize=False):
+def load_graphdata_channel1(args, feat_dir, time, scaler=None, visualize=False, cut=False):
     """
         dir: ./data/PEMS04/PEMS04.npz, shape: (16992, 307, 3) 59 days, 2018, 1.1 - 2.28 , [flow, occupy, speed]  24%
         dir: ./data/PEMS07/PEMS07.npz, shape: (28224, 883, 1) 98 days, 2017, 5.1 - 8.31 , [flow]                 14%
         dir: ./data/PEMS08/PEMS08.npz, shape: (17856, 170, 3) 62 days, 2016, 7.1 - 8.31 , [flow, occupy, speed]  23%
     """
-    file_data = np.load(feat_dir)
-    data = file_data['data']
-    where_are_nans = np.isnan(data)
-    data[where_are_nans] = 0
-    where_are_nans = (data != data)
-    data[where_are_nans] = 0
-    data = data[:, :, 0]  # flow only
+    if args.dataset == "8":
+        city = "DC"
+    elif args.dataset == "7":
+        city = "CHI"
+    elif args.dataset == "4":
+        city = "NY"
+    dirs = "./data/{}/{}{}_{}.npy".format(city, args.dataname, city, args.datatype)
+    file_data = np.load(dirs)
+    data = file_data.reshape((file_data.shape[0], file_data.shape[1] * file_data.shape[2]))
 
     if time:
         num_data, num_sensor = data.shape
@@ -253,7 +287,9 @@ def load_graphdata_channel1(args, feat_dir, time, scaler=None, visualize=False):
     else:
         max_speed = max(max_xval, max_yval, max_xtest, max_ytest)
         min_speed = min(min_xval, min_yval, min_xtest, min_ytest)
-
+    if cut:
+        train_X = train_X[-args.data_amount * 24:, :, :]
+        train_Y = train_Y[-args.data_amount * 24:, :, :]
     return train_X, train_Y, val_X, val_Y, test_X, test_Y, max_val, scaler
 
 
