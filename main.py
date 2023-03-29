@@ -422,3 +422,15 @@ if args.labelrate != 0:
 
 test_mae, test_rmse, test_mape = test()
 print(f'mae: {test_mae: .4f}, rmse: {test_rmse: .4f}, mape: {test_mape * 100: .4f}\n\n')
+if args.c != "default":
+    if args.need_remark == 1:
+        record.update(record_id, get_timestamp(),
+                      "%.4f,%.4f,%.4f" %
+                      (test_rmse, test_mae, test_mape / 100),
+                      remark="{}C {} {} {} {}".format("2" if args.need_third == 0 else "3", str(args.data_amount),
+                                                      args.dataname, args.datatype, args.machine_code))
+    else:
+        record.update(record_id, get_timestamp(),
+                      "%.4f,%.4f, %.4f" %
+                      (test_rmse, test_mae, test_mape / 100),
+                      remark="{}".format(args.machine_code))
