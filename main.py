@@ -14,7 +14,7 @@ from PaperCrawlerUtil.research_util import *
 import ast
 
 
-
+basic_config(logs_style=LOG_STYLE_ALL)
 def arg_parse(parser):
     parser.add_argument('--dataset', type=str, default='4', help='dataset')
     parser.add_argument('--seed', type=int, default=0, help='seed')
@@ -196,7 +196,7 @@ def model_train(args, model, optimizer):
         if type == 'fine-tune' and epoch > 1000:
             args.val = True
         mae_train, rmse_train, mae_val, rmse_val, mae_test, rmse_test, mape_test, train_acc = train(dur, model, optimizer, total_step, start_step)
-        print(f'Epoch {epoch} | acc_train: {train_acc: .4f} | mae_train: {mae_train: .4f} | rmse_train: {rmse_train: .4f} | mae_val: {mae_val: .4f} | rmse_val: {rmse_val: .4f} | mae_test: {mae_test: .4f} | rmse_test: {rmse_test: .4f} | mape_test: {mape_test: .4f} | Time(s) {dur[-1]: .4f}')
+        log(f'Epoch {epoch} | acc_train: {train_acc: .4f} | mae_train: {mae_train: .4f} | rmse_train: {rmse_train: .4f} | mae_val: {mae_val: .4f} | rmse_val: {rmse_val: .4f} | mae_test: {mae_test: .4f} | rmse_test: {rmse_test: .4f} | mape_test: {mape_test: .4f} | Time(s) {dur[-1]: .4f}')
         epoch += 1
         acc.append(train_acc)
         if mae_val <= best:
