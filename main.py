@@ -236,7 +236,9 @@ if args.labelrate > 100:
 
 adj_pems04, adj_pems07, adj_pems08 = load_all_adj(device)
 vec_pems04 = vec_pems07 = vec_pems08 = None, None, None
-
+dc = np.load("./data/DC/{}DC_{}.npy".format(args.dataname, args.datatype))
+mask = dc.sum(0) > 0
+th_mask = torch.from_numpy(mask).reshape(1, 420).to(device)
 cur_dir = os.getcwd()
 if cur_dir[-2:] == 'sh':
     cur_dir = cur_dir[:-2]
@@ -400,8 +402,6 @@ if args.labelrate != 0:
     test_state = model_train(args, model, optimizer)
     model.load_state_dict(test_state['model'])
     optimizer.load_state_dict(test_state['optim'])
-dc = np.load("./data/DC/{}DC_{}.npy".format(args.dataname, args.datatype))
-mask = dc.sum(0) > 0
-th_mask = torch.from_numpy(mask).reshape(1, 420).to(device)
+
 test_mae, test_rmse, test_mape = test(th_mask)
 print(f'mae: {test_mae: .4f}, rmse: {test_rmse: .4f}, mape: {test_mape * 100: .4f}\n\n')
