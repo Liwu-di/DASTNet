@@ -373,7 +373,7 @@ else:
     args.test = bak_test
 
 type = 'fine-tune'
-args.epoch = 80
+args.epoch = args.fine_epoch
 
 print(f'\n\n*******************************************************************************************')
 print(f'dataset: {args.dataset}, model: {args.model}, pre_len: {args.pre_len}, labelrate: {args.labelrate}, seed: {args.division_seed}')
