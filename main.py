@@ -151,7 +151,7 @@ def train(dur, model, optimizer, total_step, start_step):
     return np.mean(train_mae), np.mean(train_rmse), np.mean(val_mae), np.mean(val_rmse), test_mae, test_rmse, test_mape, np.mean(train_acc)
 
 
-def test():
+def test(mask):
     if type == 'pretrain':
         domain_classifier.eval()
     model.eval()
@@ -171,9 +171,9 @@ def test():
 
         mae_test, rmse_test, mape_test = masked_loss(scaler.inverse_transform(pred), scaler.inverse_transform(label))
 
-        test_mae.append(mae_test.item())
-        test_rmse.append(rmse_test.item())
-        test_mape.append(mape_test.item())
+        test_mae.append(mae_test * mask.item())
+        test_rmse.append(rmse_test * mask.item())
+        test_mape.append(mape_test * mask.item())
 
     test_rmse = np.mean(test_rmse)
     test_mae = np.mean(test_mae)
@@ -400,6 +400,8 @@ if args.labelrate != 0:
     test_state = model_train(args, model, optimizer)
     model.load_state_dict(test_state['model'])
     optimizer.load_state_dict(test_state['optim'])
-
-test_mae, test_rmse, test_mape = test()
+dc = np.load("./data/DC/{}DC_{}.npy".format(args.dataname, args.datatype))
+mask = dc.sum(0) > 0
+th_mask = torch.from_numpy(mask).reshape(1, 420).to(device)
+test_mae, test_rmse, test_mape = test(th_mask)
 print(f'mae: {test_mae: .4f}, rmse: {test_rmse: .4f}, mape: {test_mape * 100: .4f}\n\n')
