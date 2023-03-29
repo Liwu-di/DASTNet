@@ -249,13 +249,13 @@ adj_pems04, adj_pems07, adj_pems08 = load_all_adj(device)
 vec_pems04 = vec_pems07 = vec_pems08 = None, None, None
 dc = np.load("./data/DC/{}DC_{}.npy".format(args.dataname, args.datatype))
 dcmask = dc.sum(0) > 0
-th_maskdc = dcmask.reshape(1, 420)
+th_maskdc = torch.from_numpy(dcmask.reshape(1, 420)).to(device)
 chi = np.load("./data/CHI/{}CHI_{}.npy".format(args.dataname, args.datatype))
 chimask = chi.sum(0) > 0
-th_maskchi = chimask.reshape(1, 476)
+th_maskchi = torch.from_numpy(chimask.reshape(1, 476)).to(device)
 ny = np.load("./data/NY/{}NY_{}.npy".format(args.dataname, args.datatype))
 nymask = ny.sum(0) > 0
-th_maskny = nymask.reshape(1, 460)
+th_maskny = torch.from_numpy(nymask.reshape(1, 460)).to(device)
 cur_dir = os.getcwd()
 if cur_dir[-2:] == 'sh':
     cur_dir = cur_dir[:-2]
