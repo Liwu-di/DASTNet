@@ -94,7 +94,7 @@ def load_data(args, scaler=None, visualize=False, distribution=False, cut=False)
                                     batch_size=args.batch_size)
     val_dataloader = MyDataLoader(torch.FloatTensor(val_X), torch.FloatTensor(val_Y), batch_size=args.batch_size)
     test_dataloader = MyDataLoader(torch.FloatTensor(test_X), torch.FloatTensor(test_Y), batch_size=args.batch_size)
-    adj = get_adjacency_matrix(distance_df_filename=adj_dir, num_of_vertices=num_of_vertices)
+    adj = None
 
     return train_dataloader, val_dataloader, test_dataloader, torch.tensor(adj), max_speed, scaler
 
