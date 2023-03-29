@@ -170,6 +170,7 @@ class Extractor_N2V(nn.Module):
             pooled = torch.spmm(adj.float(), h.float())
             degree = torch.spmm(adj.float(), torch.ones((adj.shape[0], 1)).float().to(self.device)).to(
                 self.device)
+            degree = torch.where(degree < torch.tensor(1e-6, dtype=degree.dtype, device=degree.device), torch.tensor(1.0, dtype=degree.dtype, device=degree.device), degree)
             pooled = pooled / degree
             h = pooled + self.eps1 * h
 
@@ -223,24 +224,23 @@ class DASTNet(nn.Module):
                 shared_pems07_feat = self.shared_pems07_featExtractor(vec_pems07, self.pems07_adj).to(self.device)
                 shared_pems08_feat = self.shared_pems08_featExtractor(vec_pems08, self.pems08_adj).to(self.device)
             else:
-                if self.dataset == '4':
+                if self.dataset == '4' or self.dataset == 'ny':
                     shared_pems04_feat = self.shared_pems04_featExtractor(vec_pems04, self.pems04_adj).to(self.device)
-                elif self.dataset == '7':
+                elif self.dataset == '7' or self.dataset == 'chi':
                     shared_pems07_feat = self.shared_pems07_featExtractor(vec_pems07, self.pems07_adj).to(self.device)
-                elif self.dataset == '8':
+                elif self.dataset == '8' or self.dataset == 'dc':
                     shared_pems08_feat = self.shared_pems08_featExtractor(vec_pems08, self.pems08_adj).to(self.device)
-
-            if self.dataset == '4':
+            if self.dataset == '4' or self.dataset == 'ny':
                 h_pems04 = shared_pems04_feat.expand(self.batch_size, self.pems04_adj.shape[0], self.encode_dim)
                 pred = self.speed_predictor(feat, h_pems04)
                 pred = self.pems04_linear(pred)
                 pred = pred.reshape((self.batch_size, self.pems04_adj.shape[0], -1))
-            elif self.dataset == '7':
+            elif self.dataset == '7' or self.dataset == 'chi':
                 h_pems07 = shared_pems07_feat.expand(self.batch_size, self.pems07_adj.shape[0], self.encode_dim)
                 pred = self.speed_predictor(feat, h_pems07)
                 pred = self.pems07_linear(pred)
                 pred = pred.reshape((self.batch_size, self.pems07_adj.shape[0], -1))
-            elif self.dataset == '8':
+            elif self.dataset == '8' or self.dataset == 'dc':
                 h_pems08 = shared_pems08_feat.expand(self.batch_size, self.pems08_adj.shape[0], self.encode_dim)
                 pred = self.speed_predictor(feat, h_pems08)
                 pred = self.pems08_linear(pred)
@@ -251,7 +251,7 @@ class DASTNet(nn.Module):
             else:
                 return pred
         else:
-            if self.dataset == '4':
+            if self.dataset == '4' or self.dataset == 'ny':
                 shared_pems04_feat = self.shared_pems04_featExtractor(vec_pems04, self.pems04_adj).to(self.device)
                 pems04_feat = self.pems04_featExtractor(vec_pems04, self.pems04_adj).to(self.device)
                 pems04_feat = self.combine_pems04_linear(self.private_pems04_linear(pems04_feat) + self.shared_pems04_linear(shared_pems04_feat))
@@ -259,7 +259,7 @@ class DASTNet(nn.Module):
                 pred = self.speed_predictor(feat, h_pems04)
                 pred = self.pems04_linear(pred)
                 pred = pred.reshape((self.batch_size, self.pems04_adj.shape[0], -1))
-            elif self.dataset == '7':
+            elif self.dataset == '7' or self.dataset == 'chi':
                 shared_pems07_feat = self.shared_pems07_featExtractor(vec_pems07, self.pems07_adj).to(self.device)
                 pems07_feat = self.pems07_featExtractor(vec_pems07, self.pems07_adj).to(self.device)
                 pems07_feat = self.combine_pems07_linear(self.private_pems07_linear(pems07_feat) + self.shared_pems07_linear(shared_pems07_feat))
@@ -267,7 +267,7 @@ class DASTNet(nn.Module):
                 pred = self.speed_predictor(feat, h_pems07)
                 pred = self.pems07_linear(pred)
                 pred = pred.reshape((self.batch_size, self.pems07_adj.shape[0], -1))
-            elif self.dataset == '8':
+            elif self.dataset == '8' or self.dataset == 'dc':
                 shared_pems08_feat = self.shared_pems08_featExtractor(vec_pems08, self.pems08_adj).to(self.device)
                 pems08_feat = self.pems08_featExtractor(vec_pems08, self.pems08_adj).to(self.device)
                 pems08_feat = self.combine_pems08_linear(self.private_pems08_linear(pems08_feat) + self.shared_pems08_linear(shared_pems08_feat))

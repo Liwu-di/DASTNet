@@ -26,6 +26,14 @@ def load_all_adj(device):
     return torch.tensor(adj_pems04).to(device), torch.tensor(adj_pems07).to(device), torch.tensor(adj_pems08).to(device)
 
 
+def load_all_adj2(device):
+
+    ny, chi, bj, dc = tuple(np.load("../data/{}/{}_roads.npy".format(i, i)) for i in ["NY", "CHI", "BJ", "DC"])
+
+    return torch.tensor(ny).to(device), torch.tensor(chi).to(device), torch.tensor(bj).to(device), torch.tensor(dc).to(device)
+
+
+
 def load_data(args, scaler=None, visualize=False, distribution=False):
     DATA_PATHS = {
         "4": {"feat": "./data/PEMS04/PEMS04.npz", "adj": "./data/PEMS04/PEMS04.csv"},
@@ -253,9 +261,13 @@ def masked_loss(y_pred, y_true):
     mask_true = (y_true > 0.01).float()
     mask_pred = (y_pred > 0.01).float()
     mask = torch.mul(mask_true, mask_pred)
-    mask /= mask.mean()
+    if mask.mean() > 1e-6:
+        mask /= mask.mean()
+    else:
+        mask = (torch.ones(mask.shape) * 0.01).to(mask.device)
     mae_loss = torch.abs(y_pred - y_true)
     mse_loss = torch.square(y_pred - y_true)
+    y_true = torch.where(y_true < torch.tensor(1e-6, dtype=y_true.dtype, device=y_true.device), torch.tensor(1, dtype=y_true.dtype, device=y_true.device), y_true)
     mape_loss = mae_loss / y_true
     mae_loss = mae_loss * mask
     mse_loss = mse_loss * mask
@@ -265,3 +277,149 @@ def masked_loss(y_pred, y_true):
     mape_loss[mape_loss != mape_loss] = 0
 
     return mae_loss.mean(), torch.sqrt(mse_loss.mean()), mape_loss.mean()
+
+
+
+def masked_loss2(y_pred, y_true):
+    mask_true = (y_true > 0.01).float()
+    mask_pred = (y_pred > 0.01).float()
+    mask = torch.mul(mask_true, mask_pred)
+    if mask.mean() > 1e-6:
+        mask /= mask.mean()
+    mae_loss = torch.abs(y_pred - y_true)
+    mse_loss = torch.square(y_pred - y_true)
+    y_true = torch.where(y_true < torch.tensor(1e-6, dtype=y_true.dtype, device=y_true.device), torch.tensor(1, dtype=y_true.dtype, device=y_true.device), y_true)
+    mape_loss = mae_loss / y_true
+    mae_loss = mae_loss * mask
+    mse_loss = mse_loss * mask
+    mape_loss = mape_loss * mask
+    mae_loss[mae_loss != mae_loss] = 0
+    mse_loss[mse_loss != mse_loss] = 0
+    mape_loss[mape_loss != mape_loss] = 0
+
+    return mae_loss.mean(), torch.sqrt(mse_loss.mean()), mape_loss.mean()
+
+
+
+
+def load_graphdata_channel2(args, data, time, scaler=None, visualize=False, cut=False):
+    """
+        dir: ./data/PEMS04/PEMS04.npz, shape: (16992, 307, 3) 59 days, 2018, 1.1 - 2.28 , [flow, occupy, speed]  24%
+        dir: ./data/PEMS07/PEMS07.npz, shape: (28224, 883, 1) 98 days, 2017, 5.1 - 8.31 , [flow]                 14%
+        dir: ./data/PEMS08/PEMS08.npz, shape: (17856, 170, 3) 62 days, 2016, 7.1 - 8.31 , [flow, occupy, speed]  23%
+    """
+
+    where_are_nans = np.isnan(data)
+    data[where_are_nans] = 0
+    where_are_nans = (data != data)
+    data[where_are_nans] = 0
+    max_val = np.max(data)
+    time_len = data.shape[0]
+    seq_len = args.seq_len
+    pre_len = args.pre_len
+    split_ratio = args.split_ratio
+    train_size = int(time_len * split_ratio)
+    val_size = int(time_len * (1 - split_ratio) / 2)
+    train_data = data[:train_size]
+    val_data = data[train_size:train_size + val_size]
+    test_data = data[train_size + val_size:time_len]
+
+    if args.labelrate != 100:
+        import random
+        new_train_size = int(train_size * args.labelrate / 100)
+        start = random.randint(0, train_size - new_train_size - 1)
+        train_data = train_data[start:start+new_train_size]
+
+    train_X, train_Y, val_X, val_Y, test_X, test_Y = list(), list(), list(), list(), list(), list()
+
+    for i in range(len(train_data) - seq_len - pre_len):
+        train_X.append(np.array(train_data[i: i + seq_len]))
+        train_Y.append(np.array(train_data[i + seq_len: i + seq_len + pre_len]))
+    for i in range(len(val_data) - seq_len - pre_len):
+        val_X.append(np.array(val_data[i: i + seq_len]))
+        val_Y.append(np.array(val_data[i + seq_len: i + seq_len + pre_len]))
+    for i in range(len(test_data) - seq_len - pre_len):
+        test_X.append(np.array(test_data[i: i + seq_len]))
+        test_Y.append(np.array(test_data[i + seq_len: i + seq_len + pre_len]))
+
+    if visualize:
+        test_X = test_X[-288:]
+        test_Y = test_Y[-288:]
+
+    if args.labelrate != 0:
+        train_X = np.array(train_X)
+        train_Y = np.array(train_Y)
+    val_X = np.array(val_X)
+    val_Y = np.array(val_Y)
+    test_X = np.array(test_X)
+    test_Y = np.array(test_Y)
+
+    if args.labelrate != 0:
+        max_xtrain = np.max(train_X)
+        max_ytrain = np.max(train_Y)
+    max_xval = np.max(val_X)
+    max_yval = np.max(val_Y)
+    max_xtest = np.max(test_X)
+    max_ytest = np.max(test_Y)
+
+    if args.labelrate != 0:
+        min_xtrain = np.min(train_X)
+        min_ytrain = np.min(train_Y)
+    min_xval = np.min(val_X)
+    min_yval = np.min(val_Y)
+    min_xtest = np.min(test_X)
+    min_ytest = np.min(test_Y)
+
+    if args.labelrate != 0:
+        max_speed = max(max_xtrain, max_ytrain, max_xval, max_yval, max_xtest, max_ytest)
+        min_speed = min(min_xtrain, min_ytrain, min_xval, min_yval, min_xtest, min_ytest)
+
+        # scaler = StandardScaler(mean=train_X[..., 0].mean(), std=train_X[..., 0].std())
+        scaler = StandardScaler(mean=train_X.mean(), std=train_X.std())
+
+
+    else:
+        max_speed = max(max_xval, max_yval, max_xtest, max_ytest)
+        min_speed = min(min_xval, min_yval, min_xtest, min_ytest)
+
+
+    if args.labelrate != 0:
+        max_xtrain = np.max(train_X)
+        max_ytrain = np.max(train_Y)
+    max_xval = np.max(val_X)
+    max_yval = np.max(val_Y)
+    max_xtest = np.max(test_X)
+    max_ytest = np.max(test_Y)
+
+    if args.labelrate != 0:
+        min_xtrain = np.min(train_X)
+        min_ytrain = np.min(train_Y)
+    min_xval = np.min(val_X)
+    min_yval = np.min(val_Y)
+    min_xtest = np.min(test_X)
+    min_ytest = np.min(test_Y)
+
+    if args.labelrate != 0:
+        max_speed = max(max_xtrain, max_ytrain, max_xval, max_yval, max_xtest, max_ytest)
+        min_speed = min(min_xtrain, min_ytrain, min_xval, min_yval, min_xtest, min_ytest)
+
+    else:
+        max_speed = max(max_xval, max_yval, max_xtest, max_ytest)
+        min_speed = min(min_xval, min_yval, min_xtest, min_ytest)
+    if cut:
+        train_X = train_X[-args.data_amount * 24:, :, :]
+        train_Y = train_Y[-args.data_amount * 24:, :, :]
+    return train_X, train_Y, val_X, val_Y, test_X, test_Y, max_val, scaler
+
+
+
+def load_data2(data, args, scaler=None, visualize=False, distribution=False, cut=False):
+
+    time = False
+    train_X, train_Y, val_X, val_Y, test_X, test_Y, max_speed, scaler = load_graphdata_channel2(args, data, time, scaler, visualize=visualize, cut=cut)
+    train_dataloader = MyDataLoader(torch.FloatTensor(train_X), torch.FloatTensor(train_Y),
+                                    batch_size=args.batch_size)
+    val_dataloader = MyDataLoader(torch.FloatTensor(val_X), torch.FloatTensor(val_Y), batch_size=args.batch_size)
+    test_dataloader = MyDataLoader(torch.FloatTensor(test_X), torch.FloatTensor(test_Y), batch_size=args.batch_size)
+
+    return train_dataloader, val_dataloader, test_dataloader, max_speed, scaler
