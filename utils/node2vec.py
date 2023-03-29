@@ -83,7 +83,7 @@ class Node2Vec:
 
         print('Start training...')
         random.seed(616)
-        w2v = Word2Vec(sentences=sentenses, size=self.emb_size, window=self.window_size,  sg=1,
+        w2v = Word2Vec(sentences=sentenses, vector_size=self.emb_size, window=self.window_size,  sg=1,
                        hs=1, min_count=1, batch_words=self.batch, workers=self.workers)
         # w2v.save('../models/Node2Vec.model')
         print('Training Done.')

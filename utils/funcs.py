@@ -77,17 +77,17 @@ def load_data(args, scaler=None, visualize=False, distribution=False, cut=False)
     if args.dataset == '4':
         feat_dir = DATA_PATHS['4']['feat']
         adj_dir = DATA_PATHS['4']['adj']
-        num_of_vertices = 307
+        num_of_vertices = 460
 
     elif args.dataset == '7':
         feat_dir = DATA_PATHS['7']['feat']
         adj_dir = DATA_PATHS['7']['adj']
-        num_of_vertices = 883
+        num_of_vertices = 476
 
     elif args.dataset == '8':
         feat_dir = DATA_PATHS['8']['feat']
         adj_dir = DATA_PATHS['8']['adj']
-        num_of_vertices = 170
+        num_of_vertices = 420
 
     train_X, train_Y, val_X, val_Y, test_X, test_Y, max_speed, scaler = load_graphdata_channel1(args, time, scaler, visualize=visualize, cut=cut)
     train_dataloader = MyDataLoader(torch.FloatTensor(train_X), torch.FloatTensor(train_Y),
