@@ -4,28 +4,7 @@ import torch
 from multiprocessing import cpu_count
 from .funcs import get_adjacency_matrix
 
-def generate_vector(args):
-    DATA_PATHS = {
-        "4": {"feat": "./data/PEMS04/PEMS04.npz", "adj": "./data/PEMS04/PEMS04.csv"},
-        "7": {"feat": "./data/PEMS07/PEMS07.npz", "adj": "./data/PEMS07/PEMS07.csv"},
-        "8": {"feat": "./data/PEMS08/PEMS08.npz", "adj": "./data/PEMS08/PEMS08.csv"},
-    }
-
-    if args.dataset == '4':
-        feat_dir = DATA_PATHS['4']['feat']
-        adj_dir = DATA_PATHS['4']['adj']
-        num_of_vertices = 307
-    elif args.dataset == '7':
-        feat_dir = DATA_PATHS['7']['feat']
-        adj_dir = DATA_PATHS['7']['adj']
-        num_of_vertices = 883
-    elif args.dataset == '8':
-        feat_dir = DATA_PATHS['8']['feat']
-        adj_dir = DATA_PATHS['8']['adj']
-        num_of_vertices = 170
-
-    adj = get_adjacency_matrix(distance_df_filename=adj_dir, num_of_vertices=num_of_vertices)
-
+def generate_vector(adj, args):
     graph = nx.DiGraph(adj)
     spl = dict(nx.all_pairs_shortest_path_length(graph))
     from .node2vec import Node2Vec as node2vec
