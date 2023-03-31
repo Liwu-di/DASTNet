@@ -26,7 +26,7 @@ from torch.utils.tensorboard import SummaryWriter
 from model import *
 from funcs import *
 from params import *
-from utils import *
+from util import *
 from PaperCrawlerUtil.research_util import *
 import argparse
 import torch
