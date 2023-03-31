@@ -85,7 +85,7 @@ def build_road_graph(cityname, lng, lat):
     :return:
     """
     # (20, 23, 20, 23)
-    adj_road = np.load("../data/%s/%s_roads.npy" % (cityname, cityname))
+    adj_road = np.load("./data/%s/%s_roads.npy" % (cityname, cityname))
     # (460, 460)
     adj_road = adj_road.reshape(lng * lat, lng * lat)
     for i in range(lng * lat): 
@@ -122,7 +122,7 @@ def build_source_dest_graph(cityname, dataname, lng, lat, topk):
     :return:
     """
     od_adj = np.zeros((lng * lat, lng * lat))
-    with open("../data/%s/%s%s_ODPairs" % (cityname, dataname, cityname), 'r') as infile:
+    with open("./data/%s/%s%s_ODPairs" % (cityname, dataname, cityname), 'r') as infile:
         od_pairs = eval(infile.read())
     for k in od_pairs:
         # 起点标号
