@@ -74,7 +74,7 @@ target_train_y, th_mask_target, device, p_bar = load_process_data(args, p_bar)
 
 if args.need_third == 1:
     scity3 = args.scity3
-    source_data3 = np.load("../data/%s/%s%s_%s.npy" % (scity3, dataname, scity3, datatype))
+    source_data3 = np.load("./data/%s/%s%s_%s.npy" % (scity3, dataname, scity3, datatype))
     lng_source3, lat_source3 = source_data3.shape[1], source_data3.shape[2]
     mask_source3 = source_data3.sum(0) > 0
     th_mask_source3 = torch.Tensor(mask_source3.reshape(1, lng_source3, lat_source3)).to(device)
@@ -93,7 +93,7 @@ if args.need_third == 1:
     source_test_loader3 = DataLoader(source_test_dataset3, batch_size=args.batch_size)
     source_dataset3 = TensorDataset(torch.Tensor(source_x3), torch.Tensor(source_y3))
     source_loader3 = DataLoader(source_dataset3, batch_size=args.batch_size, shuffle=True)
-    source_poi3 = np.load("../data/%s/%s_poi.npy" % (scity3, scity3))
+    source_poi3 = np.load("./data/%s/%s_poi.npy" % (scity3, scity3))
     source_poi3 = source_poi3.reshape(lng_source3 * lat_source3, -1)
     transform3 = TfidfTransformer()
     source_norm_poi3 = np.array(transform3.fit_transform(source_poi3).todense())
