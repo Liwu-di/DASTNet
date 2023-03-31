@@ -963,7 +963,7 @@ else:
 
         train_dataloader, val_dataloader, test_dataloader, adj, max_speed, scaler = load_data(args)
         train_X, train_Y, val_X, val_Y, test_X, test_Y, max_speed, scaler = load_graphdata_channel3(args, time, scaler, visualize=False)
-        print([i.shapr for i in [train_X, train_Y, val_X, val_Y, test_X, test_Y]])
+        print([i.shape for i in [train_X, train_Y, val_X, val_Y, test_X, test_Y]])
         train_dataloader = MyDataLoader(torch.FloatTensor(train_X), torch.FloatTensor(train_Y),
                                         batch_size=args.batch_size)
         val_dataloader = MyDataLoader(torch.FloatTensor(val_X), torch.FloatTensor(val_Y), batch_size=args.batch_size)
