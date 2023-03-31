@@ -1173,6 +1173,7 @@ for m in range(virtual_road.shape[0]):
         dis = abs(a - c) + abs(b - d)
         if virtual_road[m][n] - 0 > 1e-6 and dis != 0:
             virtual_road[m][n] = virtual_road[m][n] / dis
+adj_virtual = torch.tensor(virtual_road).to(device)
 dc = np.load("./data/DC/{}DC_{}.npy".format(args.dataname, args.datatype))
 dcmask = dc.sum(0) > 0
 th_maskdc = torch.from_numpy(dcmask.reshape(1, 420)).to(device)
@@ -1273,6 +1274,7 @@ for i in a:
 local_path_generate("/".join(b), create_folder_only=True)
 
 vec_pems04 = vec_virtual
+adj_pems04 = adj_virtual
 if os.path.exists(pretrain_model_path):
     print(f'Loading pretrained model at {pretrain_model_path}')
     state = torch.load(pretrain_model_path, map_location='cpu')
