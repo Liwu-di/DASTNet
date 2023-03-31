@@ -525,7 +525,6 @@ def train(dur, model, optimizer, total_step, start_step, need_road):
         domain_classifier.train()
 
     for i, (feat, label) in enumerate(train_dataloader.get_iterator()):
-        print(feat.shape, label.shape)
         mask = select_mask(feat.shape[2])
         Reverse = False
         if i > 0:
@@ -876,7 +875,7 @@ else:
         def load_graphdata_channel3(args, feat_dir, time, scaler=None, visualize=False, cut=False):
             data = virtual_city
             data = data.reshape((data.shape[0], data.shape[1] * data.shape[2]))
-
+            print(data.shape)
             if time:
                 num_data, num_sensor = data.shape
                 data = np.expand_dims(data, axis=-1)
@@ -899,7 +898,7 @@ else:
             train_data = data[:train_size]
             val_data = data[train_size:train_size + val_size]
             test_data = data[train_size + val_size:time_len]
-
+            print(data.shape)
             if args.labelrate != 100:
                 import random
                 new_train_size = int(train_size * args.labelrate / 100)
