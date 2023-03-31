@@ -60,7 +60,7 @@ def arg_parse(parser):
     parser.add_argument("--machine_code", type=str, default="my-1060", help="code of machine")
     parser.add_argument("--need_remark", type=int, default=0)
     parser.add_argument("--fine_epoch", type=int, default=80)
-    parser.add_argument("--need_road", type=int, default=0)
+    parser.add_argument("--need_road", type=bool, default=True)
     return parser.parse_args()
 
 
