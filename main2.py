@@ -14,6 +14,7 @@ import numpy as np
 import torch.optim as optim
 from utils.funcs import load_data, load_all_adj
 from utils.funcs import masked_loss
+from utils.funcs import *
 from utils.vec import generate_vector
 from model import DASTNet, Domain_classifier_DG
 from PaperCrawlerUtil.common_util import *
@@ -226,7 +227,7 @@ np.random.seed(args.seed)
 if args.labelrate > 100:
     args.labelrate = 100
 
-adj_pems04, adj_pems07, adj_pems08 = load_all_adj(device)
+adj_pems04, adj_pems07, adj_pems08 = load_all_adj2(device)
 vec_pems04 = vec_pems07 = vec_pems08 = None, None, None
 
 cur_dir = os.getcwd()
@@ -338,7 +339,7 @@ else:
             g = vec_pems08
 
         args.dataset = dataset
-        train_dataloader, val_dataloader, test_dataloader, adj, max_speed, scaler = load_data(args)
+        train_dataloader, val_dataloader, test_dataloader, adj, max_speed, scaler = load_data2(args)
         model = DASTNet(input_dim=args.vec_dim, hidden_dim=args.hidden_dim, encode_dim=args.enc_dim,
                             device=device, batch_size=args.batch_size, etype=args.etype, pre_len=args.pre_len,
                             dataset=args.dataset, ft_dataset=dataset_bak,
@@ -373,7 +374,7 @@ elif args.dataset == '7':
 elif args.dataset == '8':
     g = vec_pems08
 
-train_dataloader, val_dataloader, test_dataloader, adj, max_speed, scaler = load_data(args)
+train_dataloader, val_dataloader, test_dataloader, adj, max_speed, scaler = load_data2(args)
 model = DASTNet(input_dim=args.vec_dim, hidden_dim=args.hidden_dim, encode_dim=args.enc_dim,
                     device=device, batch_size=args.batch_size, etype=args.etype, pre_len=args.pre_len,
                     dataset=args.dataset, ft_dataset=args.dataset,

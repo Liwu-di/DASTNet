@@ -31,7 +31,13 @@ def idx_1d22d(idx, shape):
     idx1d = int(idx % shape[1])
     return idx0d, idx1d
 
+def load_all_adj2(device):
 
+    adj_pems04 = get_adjacency_matrix(distance_df_filename="./data/PEMS04/PEMS04.csv", num_of_vertices=307)
+    adj_pems07 = get_adjacency_matrix(distance_df_filename="./data/PEMS07/PEMS07.csv", num_of_vertices=883)
+    adj_pems08 = get_adjacency_matrix(distance_df_filename="./data/PEMS08/PEMS08.csv", num_of_vertices=170)
+
+    return torch.tensor(adj_pems04).to(device), torch.tensor(adj_pems07).to(device), torch.tensor(adj_pems08).to(device)
 def load_all_adj(device):
     dirs = "./data/{}/{}_roads.npy"
     ny, chi, dc = None, None, None
@@ -57,14 +63,163 @@ def load_all_adj(device):
 
     return torch.tensor(ny).to(device), torch.tensor(chi).to(device), torch.tensor(dc).to(device)
 
+def load_graphdata_channel2(args, feat_dir, time, scaler=None, visualize=False):
+    """
+        dir: ./data/PEMS04/PEMS04.npz, shape: (16992, 307, 3) 59 days, 2018, 1.1 - 2.28 , [flow, occupy, speed]  24%
+        dir: ./data/PEMS07/PEMS07.npz, shape: (28224, 883, 1) 98 days, 2017, 5.1 - 8.31 , [flow]                 14%
+        dir: ./data/PEMS08/PEMS08.npz, shape: (17856, 170, 3) 62 days, 2016, 7.1 - 8.31 , [flow, occupy, speed]  23%
+    """
+    file_data = np.load(feat_dir)
+    data = file_data['data']
+    where_are_nans = np.isnan(data)
+    data[where_are_nans] = 0
+    where_are_nans = (data != data)
+    data[where_are_nans] = 0
+    data = data[:, :, 0]  # flow only
 
-def load_all_adj2(device):
+    if time:
+        num_data, num_sensor = data.shape
+        data = np.expand_dims(data, axis=-1)
+        data = data.tolist()
 
-    ny, chi, bj, dc = tuple(np.load("../data/{}/{}_roads.npy".format(i, i)) for i in ["NY", "CHI", "BJ", "DC"])
+        for i in range(num_data):
+            time = (i % 288) / 288
+            for j in range(num_sensor):
+                data[i][j].append(time)
 
-    return torch.tensor(ny).to(device), torch.tensor(chi).to(device), torch.tensor(bj).to(device), torch.tensor(dc).to(device)
+        data = np.array(data)
 
+    max_val = np.max(data)
+    time_len = data.shape[0]
+    seq_len = args.seq_len
+    pre_len = args.pre_len
+    split_ratio = args.split_ratio
+    train_size = int(time_len * split_ratio)
+    val_size = int(time_len * (1 - split_ratio) / 3)
+    train_data = data[:train_size]
+    val_data = data[train_size:train_size + val_size]
+    test_data = data[train_size + val_size:time_len]
 
+    if args.labelrate != 100:
+        import random
+        new_train_size = int(train_size * args.labelrate / 100)
+        start = random.randint(0, train_size - new_train_size - 1)
+        train_data = train_data[start:start+new_train_size]
+
+    train_X, train_Y, val_X, val_Y, test_X, test_Y = list(), list(), list(), list(), list(), list()
+
+    for i in range(len(train_data) - seq_len - pre_len):
+        train_X.append(np.array(train_data[i: i + seq_len]))
+        train_Y.append(np.array(train_data[i + seq_len: i + seq_len + pre_len]))
+    for i in range(len(val_data) - seq_len - pre_len):
+        val_X.append(np.array(val_data[i: i + seq_len]))
+        val_Y.append(np.array(val_data[i + seq_len: i + seq_len + pre_len]))
+    for i in range(len(test_data) - seq_len - pre_len):
+        test_X.append(np.array(test_data[i: i + seq_len]))
+        test_Y.append(np.array(test_data[i + seq_len: i + seq_len + pre_len]))
+
+    if visualize:
+        test_X = test_X[-288:]
+        test_Y = test_Y[-288:]
+
+    if args.labelrate != 0:
+        train_X = np.array(train_X)
+        train_Y = np.array(train_Y)
+    val_X = np.array(val_X)
+    val_Y = np.array(val_Y)
+    test_X = np.array(test_X)
+    test_Y = np.array(test_Y)
+
+    if args.labelrate != 0:
+        max_xtrain = np.max(train_X)
+        max_ytrain = np.max(train_Y)
+    max_xval = np.max(val_X)
+    max_yval = np.max(val_Y)
+    max_xtest = np.max(test_X)
+    max_ytest = np.max(test_Y)
+
+    if args.labelrate != 0:
+        min_xtrain = np.min(train_X)
+        min_ytrain = np.min(train_Y)
+    min_xval = np.min(val_X)
+    min_yval = np.min(val_Y)
+    min_xtest = np.min(test_X)
+    min_ytest = np.min(test_Y)
+
+    if args.labelrate != 0:
+        max_speed = max(max_xtrain, max_ytrain, max_xval, max_yval, max_xtest, max_ytest)
+        min_speed = min(min_xtrain, min_ytrain, min_xval, min_yval, min_xtest, min_ytest)
+
+        # scaler = StandardScaler(mean=train_X[..., 0].mean(), std=train_X[..., 0].std())
+        scaler = StandardScaler(mean=train_X.mean(), std=train_X.std())
+
+        train_X = scaler.transform(train_X)
+        train_Y = scaler.transform(train_Y)
+    else:
+        max_speed = max(max_xval, max_yval, max_xtest, max_ytest)
+        min_speed = min(min_xval, min_yval, min_xtest, min_ytest)
+
+    val_X = scaler.transform(val_X)
+    val_Y = scaler.transform(val_Y)
+    test_X = scaler.transform(test_X)
+    test_Y = scaler.transform(test_Y)
+
+    if args.labelrate != 0:
+        max_xtrain = np.max(train_X)
+        max_ytrain = np.max(train_Y)
+    max_xval = np.max(val_X)
+    max_yval = np.max(val_Y)
+    max_xtest = np.max(test_X)
+    max_ytest = np.max(test_Y)
+
+    if args.labelrate != 0:
+        min_xtrain = np.min(train_X)
+        min_ytrain = np.min(train_Y)
+    min_xval = np.min(val_X)
+    min_yval = np.min(val_Y)
+    min_xtest = np.min(test_X)
+    min_ytest = np.min(test_Y)
+
+    if args.labelrate != 0:
+        max_speed = max(max_xtrain, max_ytrain, max_xval, max_yval, max_xtest, max_ytest)
+        min_speed = min(min_xtrain, min_ytrain, min_xval, min_yval, min_xtest, min_ytest)
+
+    else:
+        max_speed = max(max_xval, max_yval, max_xtest, max_ytest)
+        min_speed = min(min_xval, min_yval, min_xtest, min_ytest)
+
+    return train_X, train_Y, val_X, val_Y, test_X, test_Y, max_val, scaler
+def load_data2(args, scaler=None, visualize=False, distribution=False):
+    DATA_PATHS = {
+        "4": {"feat": "./data/PEMS04/PEMS04.npz", "adj": "./data/PEMS04/PEMS04.csv"},
+        "7": {"feat": "./data/PEMS07/PEMS07.npz", "adj": "./data/PEMS07/PEMS07.csv"},
+        "8": {"feat": "./data/PEMS08/PEMS08.npz", "adj": "./data/PEMS08/PEMS08.csv"},
+    }
+    time = False
+
+    if args.dataset == '4':
+        feat_dir = DATA_PATHS['4']['feat']
+        adj_dir = DATA_PATHS['4']['adj']
+        num_of_vertices = 307
+
+    elif args.dataset == '7':
+        feat_dir = DATA_PATHS['7']['feat']
+        adj_dir = DATA_PATHS['7']['adj']
+        num_of_vertices = 883
+
+    elif args.dataset == '8':
+        feat_dir = DATA_PATHS['8']['feat']
+        adj_dir = DATA_PATHS['8']['adj']
+        num_of_vertices = 170
+
+    train_X, train_Y, val_X, val_Y, test_X, test_Y, max_speed, scaler = load_graphdata_channel2(args, feat_dir, time, scaler, visualize=visualize)
+    train_dataloader = MyDataLoader(torch.FloatTensor(train_X), torch.FloatTensor(train_Y),
+                                    batch_size=args.batch_size)
+    val_dataloader = MyDataLoader(torch.FloatTensor(val_X), torch.FloatTensor(val_Y), batch_size=args.batch_size)
+    test_dataloader = MyDataLoader(torch.FloatTensor(test_X), torch.FloatTensor(test_Y), batch_size=args.batch_size)
+    adj = get_adjacency_matrix(distance_df_filename=adj_dir, num_of_vertices=num_of_vertices)
+
+    return train_dataloader, val_dataloader, test_dataloader, torch.tensor(adj), max_speed, scaler
 
 def load_data(args, scaler=None, visualize=False, distribution=False, cut=False):
     DATA_PATHS = {
@@ -337,127 +492,3 @@ def masked_loss2(y_pred, y_true):
 
     return mae_loss.mean(), torch.sqrt(mse_loss.mean()), mape_loss.mean()
 
-
-
-
-def load_graphdata_channel2(args, data, time, scaler=None, visualize=False, cut=False):
-    """
-        dir: ./data/PEMS04/PEMS04.npz, shape: (16992, 307, 3) 59 days, 2018, 1.1 - 2.28 , [flow, occupy, speed]  24%
-        dir: ./data/PEMS07/PEMS07.npz, shape: (28224, 883, 1) 98 days, 2017, 5.1 - 8.31 , [flow]                 14%
-        dir: ./data/PEMS08/PEMS08.npz, shape: (17856, 170, 3) 62 days, 2016, 7.1 - 8.31 , [flow, occupy, speed]  23%
-    """
-
-    where_are_nans = np.isnan(data)
-    data[where_are_nans] = 0
-    where_are_nans = (data != data)
-    data[where_are_nans] = 0
-    max_val = np.max(data)
-    time_len = data.shape[0]
-    seq_len = args.seq_len
-    pre_len = args.pre_len
-    split_ratio = args.split_ratio
-    train_size = int(time_len * split_ratio)
-    val_size = int(time_len * (1 - split_ratio) / 2)
-    train_data = data[:train_size]
-    val_data = data[train_size:train_size + val_size]
-    test_data = data[train_size + val_size:time_len]
-
-    if args.labelrate != 100:
-        import random
-        new_train_size = int(train_size * args.labelrate / 100)
-        start = random.randint(0, train_size - new_train_size - 1)
-        train_data = train_data[start:start+new_train_size]
-
-    train_X, train_Y, val_X, val_Y, test_X, test_Y = list(), list(), list(), list(), list(), list()
-
-    for i in range(len(train_data) - seq_len - pre_len):
-        train_X.append(np.array(train_data[i: i + seq_len]))
-        train_Y.append(np.array(train_data[i + seq_len: i + seq_len + pre_len]))
-    for i in range(len(val_data) - seq_len - pre_len):
-        val_X.append(np.array(val_data[i: i + seq_len]))
-        val_Y.append(np.array(val_data[i + seq_len: i + seq_len + pre_len]))
-    for i in range(len(test_data) - seq_len - pre_len):
-        test_X.append(np.array(test_data[i: i + seq_len]))
-        test_Y.append(np.array(test_data[i + seq_len: i + seq_len + pre_len]))
-
-    if visualize:
-        test_X = test_X[-288:]
-        test_Y = test_Y[-288:]
-
-    if args.labelrate != 0:
-        train_X = np.array(train_X)
-        train_Y = np.array(train_Y)
-    val_X = np.array(val_X)
-    val_Y = np.array(val_Y)
-    test_X = np.array(test_X)
-    test_Y = np.array(test_Y)
-
-    if args.labelrate != 0:
-        max_xtrain = np.max(train_X)
-        max_ytrain = np.max(train_Y)
-    max_xval = np.max(val_X)
-    max_yval = np.max(val_Y)
-    max_xtest = np.max(test_X)
-    max_ytest = np.max(test_Y)
-
-    if args.labelrate != 0:
-        min_xtrain = np.min(train_X)
-        min_ytrain = np.min(train_Y)
-    min_xval = np.min(val_X)
-    min_yval = np.min(val_Y)
-    min_xtest = np.min(test_X)
-    min_ytest = np.min(test_Y)
-
-    if args.labelrate != 0:
-        max_speed = max(max_xtrain, max_ytrain, max_xval, max_yval, max_xtest, max_ytest)
-        min_speed = min(min_xtrain, min_ytrain, min_xval, min_yval, min_xtest, min_ytest)
-
-        # scaler = StandardScaler(mean=train_X[..., 0].mean(), std=train_X[..., 0].std())
-        scaler = StandardScaler(mean=train_X.mean(), std=train_X.std())
-
-
-    else:
-        max_speed = max(max_xval, max_yval, max_xtest, max_ytest)
-        min_speed = min(min_xval, min_yval, min_xtest, min_ytest)
-
-
-    if args.labelrate != 0:
-        max_xtrain = np.max(train_X)
-        max_ytrain = np.max(train_Y)
-    max_xval = np.max(val_X)
-    max_yval = np.max(val_Y)
-    max_xtest = np.max(test_X)
-    max_ytest = np.max(test_Y)
-
-    if args.labelrate != 0:
-        min_xtrain = np.min(train_X)
-        min_ytrain = np.min(train_Y)
-    min_xval = np.min(val_X)
-    min_yval = np.min(val_Y)
-    min_xtest = np.min(test_X)
-    min_ytest = np.min(test_Y)
-
-    if args.labelrate != 0:
-        max_speed = max(max_xtrain, max_ytrain, max_xval, max_yval, max_xtest, max_ytest)
-        min_speed = min(min_xtrain, min_ytrain, min_xval, min_yval, min_xtest, min_ytest)
-
-    else:
-        max_speed = max(max_xval, max_yval, max_xtest, max_ytest)
-        min_speed = min(min_xval, min_yval, min_xtest, min_ytest)
-    if cut:
-        train_X = train_X[-args.data_amount * 24:, :, :]
-        train_Y = train_Y[-args.data_amount * 24:, :, :]
-    return train_X, train_Y, val_X, val_Y, test_X, test_Y, max_val, scaler
-
-
-
-def load_data2(data, args, scaler=None, visualize=False, distribution=False, cut=False):
-
-    time = False
-    train_X, train_Y, val_X, val_Y, test_X, test_Y, max_speed, scaler = load_graphdata_channel2(args, data, time, scaler, visualize=visualize, cut=cut)
-    train_dataloader = MyDataLoader(torch.FloatTensor(train_X), torch.FloatTensor(train_Y),
-                                    batch_size=args.batch_size)
-    val_dataloader = MyDataLoader(torch.FloatTensor(val_X), torch.FloatTensor(val_Y), batch_size=args.batch_size)
-    test_dataloader = MyDataLoader(torch.FloatTensor(test_X), torch.FloatTensor(test_Y), batch_size=args.batch_size)
-
-    return train_dataloader, val_dataloader, test_dataloader, max_speed, scaler
