@@ -26,7 +26,7 @@ from torch.utils.data import DataLoader
 from torch.utils.data import TensorDataset
 from torch.utils.tensorboard import SummaryWriter
 from model import *
-from utils import *
+from util import *
 from dtaidistance import dtw
 from scipy.stats import wasserstein_distance
 from scipy.spatial import distance
@@ -333,7 +333,7 @@ def load_process_data(args, p_bar):
     # Load spatio temporal data
     # (8784, 21, 20)
     # 8784 = 366 * 24
-    target_data = np.load("../data/%s/%s%s_%s.npy" % (tcity, dataname, tcity, datatype))
+    target_data = np.load("./data/%s/%s%s_%s.npy" % (tcity, dataname, tcity, datatype))
     # (21, 20) 经纬度分割
     lng_target, lat_target = target_data.shape[1], target_data.shape[2]
     # numpy.sum()，求和某一维度或者维度为none时，求和所有，减掉一个维度
@@ -346,7 +346,7 @@ def load_process_data(args, p_bar):
     # (（21， 20）-> 420, （21， 20）-> 420)
     target_emb_label = masked_percentile_label(target_data.sum(0).reshape(-1), mask_target.reshape(-1))
     # (8784, 20, 23)
-    source_data = np.load("../data/%s/%s%s_%s.npy" % (scity, dataname, scity, datatype))
+    source_data = np.load("./data/%s/%s%s_%s.npy" % (scity, dataname, scity, datatype))
     log(source_data.shape)
     # (20, 23)
     lng_source, lat_source = source_data.shape[1], source_data.shape[2]
@@ -355,7 +355,7 @@ def load_process_data(args, p_bar):
     th_mask_source = torch.Tensor(mask_source.reshape(1, lng_source, lat_source)).to(device)
     log("%d valid regions in source" % np.sum(mask_source))
 
-    source_data2 = np.load("../data/%s/%s%s_%s.npy" % (scity2, dataname, scity2, datatype))
+    source_data2 = np.load("./data/%s/%s%s_%s.npy" % (scity2, dataname, scity2, datatype))
     log(source_data2.shape)
     lng_source2, lat_source2 = source_data2.shape[1], source_data2.shape[2]
     mask_source2 = source_data2.sum(0) > 0
@@ -432,9 +432,9 @@ def load_process_data(args, p_bar):
 
     # Load auxiliary data: poi data
     # (20, 23, 14)
-    source_poi = np.load("../data/%s/%s_poi.npy" % (scity, scity))
-    source_poi2 = np.load("../data/%s/%s_poi.npy" % (scity2, scity2))
-    target_poi = np.load("../data/%s/%s_poi.npy" % (tcity, tcity))
+    source_poi = np.load("./data/%s/%s_poi.npy" % (scity, scity))
+    source_poi2 = np.load("./data/%s/%s_poi.npy" % (scity2, scity2))
+    target_poi = np.load("./data/%s/%s_poi.npy" % (tcity, tcity))
     # (460, 14)
     source_poi = source_poi.reshape(lng_source * lat_source, -1)  # regions * classes
     source_poi2 = source_poi2.reshape(lng_source2 * lat_source2, -1)  # regions * classes
