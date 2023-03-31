@@ -32,7 +32,7 @@ def params():
     parser.add_argument('--batch_size', type=int, default=16)
     parser.add_argument('--batch_size_time_sample', type=int, default=8)
     # 模型
-    parser.add_argument("--model", type=str, default='STNet_nobn', help='Within [STResNet, STNet, STNet_nobn]')
+    # parser.add_argument("--model", type=str, default='STNet_nobn', help='Within [STResNet, STNet, STNet_nobn]')
     # 学习率
     parser.add_argument('--learning_rate', type=float, default=1e-3)
     # 权重
