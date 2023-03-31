@@ -1005,7 +1005,7 @@ def train(dur, model, optimizer, total_step, start_step, need_road):
             continue
 
         optimizer.zero_grad()
-        if args.model not in ['DCRNN', 'STGCN', 'HA']:
+        if args.models not in ['DCRNN', 'STGCN', 'HA']:
             if type == 'pretrain':
                 pred, shared_pems04_feat, shared_pems07_feat, shared_pems08_feat = model(vec_pems04, vec_pems07, vec_pems08, feat, False, need_road)
             elif type == 'fine-tune':
@@ -1255,7 +1255,7 @@ batch_seen = 0
 cur_dir = os.getcwd()
 if cur_dir[-2:] == 'sh':
     cur_dir = cur_dir[:-2]
-assert args.model in ["DASTNet"]
+assert args.models in ["DASTNet"]
 
 bak_epoch = args.epoch
 bak_val = args.val
@@ -1263,7 +1263,7 @@ bak_test = args.test
 type = 'pretrain'
 pretrain_model_path = os.path.join('{}'.format(cur_dir), 'pretrained', 'transfer_models',
                                    '{}'.format(args.dataset), '{}_prelen'.format(args.pre_len),
-                                   'flow_model4_{}_epoch_{}_{}_{}.pkl'.format(args.model, args.epoch, args.dataname, args.datatype))
+                                   'flow_model4_{}_epoch_{}_{}_{}.pkl'.format(args.models, args.epoch, args.dataname, args.datatype))
 
 a = pretrain_model_path.split("/")
 b = []
@@ -1289,7 +1289,7 @@ else:
         dataset_count = dataset_count + 1
 
         print(f'\n\n****************************************************************************************************************')
-        print(f'dataset: {dataset}, model: {args.model}, pre_len: {args.pre_len}, labelrate: {args.labelrate}')
+        print(f'dataset: {dataset}, model: {args.models}, pre_len: {args.pre_len}, labelrate: {args.labelrate}')
         print(f'****************************************************************************************************************\n\n')
 
         if dataset == '4':
@@ -1325,7 +1325,7 @@ type = 'fine-tune'
 args.epoch = args.fine_epoch
 
 print(f'\n\n*******************************************************************************************')
-print(f'dataset: {args.dataset}, model: {args.model}, pre_len: {args.pre_len}, labelrate: {args.labelrate}, seed: {args.division_seed}')
+print(f'dataset: {args.dataset}, model: {args.models}, pre_len: {args.pre_len}, labelrate: {args.labelrate}, seed: {args.division_seed}')
 print(f'*******************************************************************************************\n\n')
 
 if args.dataset == '4':

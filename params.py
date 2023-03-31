@@ -32,7 +32,7 @@ def params():
     parser.add_argument('--batch_size', type=int, default=16)
     parser.add_argument('--batch_size_time_sample', type=int, default=8)
     # 模型
-    # parser.add_argument("--model", type=str, default='STNet_nobn', help='Within [STResNet, STNet, STNet_nobn]')
+    parser.add_argument("--model", type=str, default='STNet_nobn', help='Within [STResNet, STNet, STNet_nobn]')
     # 学习率
     parser.add_argument('--learning_rate', type=float, default=1e-3)
     # 权重
@@ -127,7 +127,7 @@ def params():
     parser.add_argument('--dataset', type=str, default='4', help='dataset')
     #parser.add_argument('--seeds', type=int, default=0, help='seed')
     parser.add_argument('--division_seed', type=int, default=0, help='division_seed')
-    parser.add_argument('--model', type=str, default='DASTNet', help='model')
+    parser.add_argument('--models', type=str, default='DASTNet', help='model')
     parser.add_argument('--labelrate', type=float, default=23, help='percent')
     parser.add_argument('--patience', type=int, default=200, help='patience')
     parser.add_argument("--hidden_dim", type=int, default=64)
@@ -138,10 +138,10 @@ def params():
     parser.add_argument("--theta", type=float, default=1)
     parser.add_argument("--p", type=float, default=1)
     parser.add_argument("--q", type=float, default=1)
-    parser.add_argument("--learning_rate", "--lr", type=float, default=1e-4)
+    parser.add_argument("--lr", type=float, default=1e-4)
     parser.add_argument("--epoch", type=int, default=10)
     parser.add_argument('--device', type=int, default=0, help='CUDA Device')
-    parser.add_argument("--batch_size", type=int, default=64)
+    # parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--seq_len", type=int, default=12)
     parser.add_argument("--pre_len", type=int, default=3)
     parser.add_argument("--split_ratio", type=float, default=0.7)
