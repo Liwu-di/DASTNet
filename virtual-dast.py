@@ -1240,7 +1240,7 @@ else:
     torch.save(vec_pems08.cpu(), pems08_emb_path)
 print(f'Generating virtual embedding...')
 args.dataset = '8'
-vec_virtual, _ = generate_vector(virtual_road.cpu().numpy(), args)
+vec_virtual, _ = generate_vector(virtual_road, args)
 vec_virtual = vec_virtual.to(device)
 
 print(f'Successfully load embeddings, 4: {vec_pems04.shape}, 7: {vec_pems07.shape}, 8: {vec_pems08.shape}, vec_virtual:{vec_virtual.shape}')
