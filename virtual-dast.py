@@ -525,6 +525,7 @@ def train(dur, model, optimizer, total_step, start_step, need_road):
         domain_classifier.train()
 
     for i, (feat, label) in enumerate(train_dataloader.get_iterator()):
+        print(feat.shape, label.shape)
         mask = select_mask(feat.shape[2])
         Reverse = False
         if i > 0:
