@@ -154,6 +154,7 @@ def params():
     parser.add_argument('--etype', type=str, default="gin", choices=["gin"], help='feature type')
     parser.add_argument("--fine_epoch", type=int, default=80)
     parser.add_argument("--need_road", type=bool, default=True)
+    parser.add_argument("--v", type=bool, default=True)
 
 
 
