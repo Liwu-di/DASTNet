@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
-# @Time    : 2023/3/31 16:39
+# @Time    : 2023/3/31 17:27
 # @Author  : 银尘
-# @FileName: main3.py
+# @FileName: main4.py
 # @Software: PyCharm
 # @Email   : liwudi@liwudi.fun
-# @Info    : 单城市
+# @Info    : 去掉路网
+
 import argparse
 import torch
 import copy
@@ -72,7 +73,7 @@ def select_mask(a):
         return th_maskny
 
 
-def train(dur, model, optimizer, total_step, start_step):
+def train(dur, model, optimizer, total_step, start_step, need_road):
     t0 = time.time()
     train_mae, val_mae, train_rmse, val_rmse, train_acc = list(), list(), list(), list(), list()
     train_correct = 0
@@ -98,9 +99,9 @@ def train(dur, model, optimizer, total_step, start_step):
         optimizer.zero_grad()
         if args.model not in ['DCRNN', 'STGCN', 'HA']:
             if type == 'pretrain':
-                pred, shared_pems04_feat, shared_pems07_feat, shared_pems08_feat = model(vec_pems04, vec_pems07, vec_pems08, feat, False)
+                pred, shared_pems04_feat, shared_pems07_feat, shared_pems08_feat = model(vec_pems04, vec_pems07, vec_pems08, feat, False, need_road)
             elif type == 'fine-tune':
-                pred = model(vec_pems04, vec_pems07, vec_pems08, feat, False)
+                pred = model(vec_pems04, vec_pems07, vec_pems08, feat, False, need_road)
 
             pred = pred.transpose(1, 2).reshape((-1, feat.size(2)))
             label = label.reshape((-1, label.size(2)))
@@ -158,7 +159,7 @@ def train(dur, model, optimizer, total_step, start_step):
         label = torch.FloatTensor(label).to(device)
         if torch.sum(scaler.inverse_transform(label)) <= 0.001:
             continue
-        pred = model(vec_pems04, vec_pems07, vec_pems08, feat, True)
+        pred = model(vec_pems04, vec_pems07, vec_pems08, feat, True, need_road)
         pred = pred.transpose(1, 2).reshape((-1, feat.size(2)))
         label = label.reshape((-1, label.size(2)))
         mae_val, rmse_val, mape_val = masked_loss(scaler.inverse_transform(pred), scaler.inverse_transform(label), maskp=mask)
@@ -184,7 +185,7 @@ def test():
         if torch.sum(scaler.inverse_transform(label)) <= 0.001:
             continue
 
-        pred = model(vec_pems04, vec_pems07, vec_pems08, feat, True)
+        pred = model(vec_pems04, vec_pems07, vec_pems08, feat, True, args.need_road)
         pred = pred.transpose(1, 2).reshape((-1, feat.size(2)))
         label = label.reshape((-1, label.size(2)))
 
@@ -214,7 +215,7 @@ def model_train(args, model, optimizer):
         start_step = epoch * step_per_epoch
         if type == 'fine-tune' and epoch > 1000:
             args.val = True
-        mae_train, rmse_train, mae_val, rmse_val, mae_test, rmse_test, mape_test, train_acc = train(dur, model, optimizer, total_step, start_step)
+        mae_train, rmse_train, mae_val, rmse_val, mae_test, rmse_test, mape_test, train_acc = train(dur, model, optimizer, total_step, start_step, args.need_road)
         log(f'Epoch {epoch} | acc_train: {train_acc: .4f} | mae_train: {mae_train: .4f} | rmse_train: {rmse_train: .4f} | mae_val: {mae_val: .4f} | rmse_val: {rmse_val: .4f} | mae_test: {mae_test: .4f} | rmse_test: {rmse_test: .4f} | mape_test: {mape_test: .4f} | Time(s) {dur[-1]: .4f}')
         epoch += 1
         acc.append(train_acc)

@@ -106,12 +106,13 @@ class VGRUCell(nn.Module):
         self.linear = nn.Linear(self._encode_dim + self._hidden_dim, self._hidden_dim)
         self.linear1 = VGRULinear(self._hidden_dim, self._hidden_dim * 2, bias=1.0)
         self.linear2 = VGRULinear(self._hidden_dim, self._hidden_dim)
+        self.linear3 = nn.Linear(self._hidden_dim, self._hidden_dim)
         self.reset_parameters()
 
     def reset_parameters(self):
         nn.init.xavier_uniform_(self.weights, gain=nn.init.calculate_gain("tanh"))
 
-    def forward(self, inputs, hidden_state, feat):
+    def forward(self, inputs, hidden_state, feat, need_road):
         batch_size, num_nodes = inputs.shape[0], inputs.shape[1]
         concatenation = torch.sigmoid(self.linear1(inputs, hidden_state))
         r, u = torch.chunk(concatenation, chunks=2, dim=1)
@@ -119,12 +120,15 @@ class VGRUCell(nn.Module):
         new_hidden_state = u * hidden_state + (1 - u) * c
 
         new_hidden_state = new_hidden_state.reshape((batch_size * num_nodes, self._hidden_dim))
-        feat = feat.reshape((batch_size * num_nodes, feat.shape[-1]))
-        feat = feat @ self.weights + self.bias
-        new_hidden_state = torch.cat((new_hidden_state, feat), 1)
-        new_hidden_state = self.linear(new_hidden_state)
-        new_hidden_state = new_hidden_state.reshape((batch_size, num_nodes * self._hidden_dim))
-
+        if need_road:
+            feat = feat.reshape((batch_size * num_nodes, feat.shape[-1]))
+            feat = feat @ self.weights + self.bias
+            new_hidden_state = torch.cat((new_hidden_state, feat), 1)
+            new_hidden_state = self.linear(new_hidden_state)
+            new_hidden_state = new_hidden_state.reshape((batch_size, num_nodes * self._hidden_dim))
+        else:
+            new_hidden_state = self.linear3(new_hidden_state)
+            new_hidden_state = new_hidden_state.reshape((batch_size, num_nodes * self._hidden_dim))
         return new_hidden_state, new_hidden_state
 
 
@@ -136,12 +140,12 @@ class VGRU_FEAT(nn.Module):
         self._output_dim = output_dim
         self.vgru_cell = VGRUCell(self._hidden_dim, self._encode_dim)
 
-    def forward(self, inputs, feat):
+    def forward(self, inputs, feat, need_road=True):
         batch_size, seq_len, num_nodes = inputs.shape
         outputs = list()
         hidden_state = torch.zeros(batch_size, num_nodes * self._hidden_dim).type_as(inputs)
         for i in range(seq_len):
-            output, hidden_state = self.vgru_cell(inputs[:, i, :], hidden_state, feat)
+            output, hidden_state = self.vgru_cell(inputs[:, i, :], hidden_state, feat, need_road)
             output = output.reshape((batch_size, num_nodes, self._hidden_dim))
             outputs.append(output)
         last_output = outputs[-1]
@@ -217,7 +221,7 @@ class DASTNet(nn.Module):
         self.combine_pems07_linear = nn.Linear(hidden_dim, hidden_dim, )
         self.combine_pems08_linear = nn.Linear(hidden_dim, hidden_dim, )
 
-    def forward(self, vec_pems04, vec_pems07, vec_pems08, feat, eval):
+    def forward(self, vec_pems04, vec_pems07, vec_pems08, feat, eval, need_road):
         if self.dataset != self.finetune_dataset:
             if not eval:
                 shared_pems04_feat = self.shared_pems04_featExtractor(vec_pems04, self.pems04_adj).to(self.device)
@@ -232,17 +236,17 @@ class DASTNet(nn.Module):
                     shared_pems08_feat = self.shared_pems08_featExtractor(vec_pems08, self.pems08_adj).to(self.device)
             if self.dataset == '4' or self.dataset == 'ny':
                 h_pems04 = shared_pems04_feat.expand(self.batch_size, self.pems04_adj.shape[0], self.encode_dim)
-                pred = self.speed_predictor(feat, h_pems04)
+                pred = self.speed_predictor(feat, h_pems04, need_road)
                 pred = self.pems04_linear(pred)
                 pred = pred.reshape((self.batch_size, self.pems04_adj.shape[0], -1))
             elif self.dataset == '7' or self.dataset == 'chi':
                 h_pems07 = shared_pems07_feat.expand(self.batch_size, self.pems07_adj.shape[0], self.encode_dim)
-                pred = self.speed_predictor(feat, h_pems07)
+                pred = self.speed_predictor(feat, h_pems07, need_road)
                 pred = self.pems07_linear(pred)
                 pred = pred.reshape((self.batch_size, self.pems07_adj.shape[0], -1))
             elif self.dataset == '8' or self.dataset == 'dc':
                 h_pems08 = shared_pems08_feat.expand(self.batch_size, self.pems08_adj.shape[0], self.encode_dim)
-                pred = self.speed_predictor(feat, h_pems08)
+                pred = self.speed_predictor(feat, h_pems08, need_road)
                 pred = self.pems08_linear(pred)
                 pred = pred.reshape((self.batch_size, self.pems08_adj.shape[0], -1))
 
@@ -256,7 +260,7 @@ class DASTNet(nn.Module):
                 pems04_feat = self.pems04_featExtractor(vec_pems04, self.pems04_adj).to(self.device)
                 pems04_feat = self.combine_pems04_linear(self.private_pems04_linear(pems04_feat) + self.shared_pems04_linear(shared_pems04_feat))
                 h_pems04 = pems04_feat.expand(self.batch_size, self.pems04_adj.shape[0], self.encode_dim)
-                pred = self.speed_predictor(feat, h_pems04)
+                pred = self.speed_predictor(feat, h_pems04, need_road)
                 pred = self.pems04_linear(pred)
                 pred = pred.reshape((self.batch_size, self.pems04_adj.shape[0], -1))
             elif self.dataset == '7' or self.dataset == 'chi':
@@ -264,7 +268,7 @@ class DASTNet(nn.Module):
                 pems07_feat = self.pems07_featExtractor(vec_pems07, self.pems07_adj).to(self.device)
                 pems07_feat = self.combine_pems07_linear(self.private_pems07_linear(pems07_feat) + self.shared_pems07_linear(shared_pems07_feat))
                 h_pems07 = pems07_feat.expand(self.batch_size, self.pems07_adj.shape[0], self.encode_dim)
-                pred = self.speed_predictor(feat, h_pems07)
+                pred = self.speed_predictor(feat, h_pems07, need_road)
                 pred = self.pems07_linear(pred)
                 pred = pred.reshape((self.batch_size, self.pems07_adj.shape[0], -1))
             elif self.dataset == '8' or self.dataset == 'dc':
@@ -272,7 +276,7 @@ class DASTNet(nn.Module):
                 pems08_feat = self.pems08_featExtractor(vec_pems08, self.pems08_adj).to(self.device)
                 pems08_feat = self.combine_pems08_linear(self.private_pems08_linear(pems08_feat) + self.shared_pems08_linear(shared_pems08_feat))
                 h_pems08 = pems08_feat.expand(self.batch_size, self.pems08_adj.shape[0], self.encode_dim)
-                pred = self.speed_predictor(feat, h_pems08)
+                pred = self.speed_predictor(feat, h_pems08, need_road)
                 pred = self.pems08_linear(pred)
                 pred = pred.reshape((self.batch_size, self.pems08_adj.shape[0], -1))
 
