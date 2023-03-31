@@ -153,8 +153,6 @@ virtual_road = None
 virtual_od = None
 virtual_source_coord = None
 
-
-
 path = "./time_weight/time_weight{}_{}_{}_{}_{}.npy"
 s1_time_weight = np.load(path.format(scity, tcity, datatype, dataname, args.data_amount)).sum(2)
 s1_time_weight, _, _ = min_max_normalize(s1_time_weight)
@@ -446,7 +444,6 @@ for i in range(virtual_road.shape[0]):
     virtual_road[i][i] = 1
 log()
 
-
 long_term_save["virtual_source_coord"] = virtual_source_coord
 long_term_save["virtual_city"] = virtual_city
 long_term_save["virtual_poi"] = virtual_poi
@@ -544,7 +541,9 @@ def train(dur, model, optimizer, total_step, start_step, need_road):
         optimizer.zero_grad()
         if args.models not in ['DCRNN', 'STGCN', 'HA']:
             if type == 'pretrain':
-                pred, shared_pems04_feat, shared_pems07_feat, shared_pems08_feat = model(vec_pems04, vec_pems07, vec_pems08, feat, False, need_road)
+                pred, shared_pems04_feat, shared_pems07_feat, shared_pems08_feat = model(vec_pems04, vec_pems07,
+                                                                                         vec_pems08, feat, False,
+                                                                                         need_road)
             elif type == 'fine-tune':
                 pred = model(vec_pems04, vec_pems07, vec_pems08, feat, False, need_road)
 
@@ -576,7 +575,8 @@ def train(dur, model, optimizer, total_step, start_step, need_road):
         if type == 'pretrain':
             train_correct = pems04_correct + pems07_correct + pems08_correct
 
-        mae_train, rmse_train, mape_train = masked_loss(scaler.inverse_transform(pred), scaler.inverse_transform(label), maskp=mask)
+        mae_train, rmse_train, mape_train = masked_loss(scaler.inverse_transform(pred), scaler.inverse_transform(label),
+                                                        maskp=mask)
 
         if type == 'pretrain':
             loss = mae_train + args.beta * (args.theta * domain_loss)
@@ -607,13 +607,15 @@ def train(dur, model, optimizer, total_step, start_step, need_road):
         pred = model(vec_pems04, vec_pems07, vec_pems08, feat, True, need_road)
         pred = pred.transpose(1, 2).reshape((-1, feat.size(2)))
         label = label.reshape((-1, label.size(2)))
-        mae_val, rmse_val, mape_val = masked_loss(scaler.inverse_transform(pred), scaler.inverse_transform(label), maskp=mask)
+        mae_val, rmse_val, mape_val = masked_loss(scaler.inverse_transform(pred), scaler.inverse_transform(label),
+                                                  maskp=mask)
         val_mae.append(mae_val.item())
         val_rmse.append(rmse_val.item())
 
     test_mae, test_rmse, test_mape = test()
     dur.append(time.time() - t0)
-    return np.mean(train_mae), np.mean(train_rmse), np.mean(val_mae), np.mean(val_rmse), test_mae, test_rmse, test_mape, np.mean(train_acc)
+    return np.mean(train_mae), np.mean(train_rmse), np.mean(val_mae), np.mean(
+        val_rmse), test_mae, test_rmse, test_mape, np.mean(train_acc)
 
 
 def test():
@@ -634,7 +636,8 @@ def test():
         pred = pred.transpose(1, 2).reshape((-1, feat.size(2)))
         label = label.reshape((-1, label.size(2)))
 
-        mae_test, rmse_test, mape_test = masked_loss(scaler.inverse_transform(pred), scaler.inverse_transform(label), maskp=mask)
+        mae_test, rmse_test, mape_test = masked_loss(scaler.inverse_transform(pred), scaler.inverse_transform(label),
+                                                     maskp=mask)
 
         test_mae.append(mae_test.item())
         test_rmse.append(rmse_test.item())
@@ -660,7 +663,11 @@ def model_train(args, model, optimizer):
         start_step = epoch * step_per_epoch
         if type == 'fine-tune' and epoch > 1000:
             args.val = True
-        mae_train, rmse_train, mae_val, rmse_val, mae_test, rmse_test, mape_test, train_acc = train(dur, model, optimizer, total_step, start_step, args.need_road)
+        mae_train, rmse_train, mae_val, rmse_val, mae_test, rmse_test, mape_test, train_acc = train(dur, model,
+                                                                                                    optimizer,
+                                                                                                    total_step,
+                                                                                                    start_step,
+                                                                                                    args.need_road)
         log(f'Epoch {epoch} | acc_train: {train_acc: .4f} | mae_train: {mae_train: .4f} | rmse_train: {rmse_train: .4f} | mae_val: {mae_val: .4f} | rmse_val: {rmse_val: .4f} | mae_test: {mae_test: .4f} | rmse_test: {rmse_test: .4f} | mape_test: {mape_test: .4f} | Time(s) {dur[-1]: .4f}')
         epoch += 1
         acc.append(train_acc)
@@ -687,7 +694,7 @@ def model_train(args, model, optimizer):
     return state
 
 
-device = torch.device("cuda:"+str(args.device) if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:" + str(args.device) if torch.cuda.is_available() else "cpu")
 print(f'device: {device}')
 if args.c != "default":
     c = ast.literal_eval(args.c)
@@ -725,13 +732,18 @@ if cur_dir[-2:] == 'sh':
     cur_dir = cur_dir[:-2]
 
 pems04_emb_path = os.path.join('{}'.format(cur_dir), 'embeddings', 'node2vec', 'pems04',
-                           '{}_vecdim.pkl'.format(args.vec_dim))
+                               '{}_vecdim.pkl'.format(args.vec_dim))
 pems07_emb_path = os.path.join('{}'.format(cur_dir), 'embeddings', 'node2vec', 'pems07',
-                            '{}_vecdim.pkl'.format(args.vec_dim))
+                               '{}_vecdim.pkl'.format(args.vec_dim))
 pems08_emb_path = os.path.join('{}'.format(cur_dir), 'embeddings', 'node2vec', 'pems08',
-                             '{}_vecdim.pkl'.format(args.vec_dim))
+                               '{}_vecdim.pkl'.format(args.vec_dim))
+v_p = os.path.join('{}'.format(cur_dir), 'embeddings', 'node2vec', 'pems08',
+                               '{}{}{}{}{}{}_vecdim.pkl'.format(args.vec_dim, args.dataname, args.datatype,
+                                       str(args.s1_rate).replace(".", ""),
+                                       str(args.s2_rate).replace(".", ""),
+                                       str(args.s3_rate).replace(".", "")))
 
-for i in [pems04_emb_path, pems07_emb_path, pems08_emb_path]:
+for i in [pems04_emb_path, pems07_emb_path, pems08_emb_path, v_p]:
     a = i.split("/")
     b = []
     for i in a:
@@ -776,12 +788,23 @@ else:
     vec_pems08 = vec_pems08.to(device)
     print(f'Saving pems08 embedding...')
     torch.save(vec_pems08.cpu(), pems08_emb_path)
-print(f'Generating virtual embedding...')
-args.dataset = '8'
-vec_virtual, _ = generate_vector(virtual_road, args)
-vec_virtual = vec_virtual.to(device)
 
-print(f'Successfully load embeddings, 4: {vec_pems04.shape}, 7: {vec_pems07.shape}, 8: {vec_pems08.shape}, vec_virtual:{vec_virtual.shape}')
+
+if os.path.exists(v_p):
+    print(f'Loading v embedding...')
+    vec_virtual = torch.load(v_p, map_location='cpu')
+    vec_virtual = vec_virtual.to(device)
+else:
+    print(f'Generating virtual embedding...')
+    args.dataset = '8'
+    vec_virtual, _ = generate_vector(virtual_road, args)
+    vec_virtual = vec_virtual.to(device)
+    print(f'Saving virtual embedding...')
+    torch.save(vec_virtual.cpu(), v_p)
+
+
+print(
+    f'Successfully load embeddings, 4: {vec_pems04.shape}, 7: {vec_pems07.shape}, 8: {vec_pems08.shape}, vec_virtual:{vec_virtual.shape}')
 
 domain_criterion = torch.nn.NLLLoss()
 domain_classifier = Domain_classifier_DG(num_class=3, encode_dim=args.enc_dim)
@@ -801,7 +824,12 @@ bak_test = args.test
 type = 'pretrain'
 pretrain_model_path = os.path.join('{}'.format(cur_dir), 'pretrained', 'transfer_models',
                                    '{}'.format(args.dataset), '{}_prelen'.format(args.pre_len),
-                                   'flow_model4_{}_epoch_{}_{}_{}.pkl'.format(args.models, args.epoch, args.dataname, args.datatype))
+                                   'flow_model4_{}_epoch_{}_{}_{}_{}_{}_{}.pkl'.format(
+                                       args.models, args.epoch, args.dataname, args.datatype,
+                                       str(args.s1_rate).replace(".", ""),
+                                       str(args.s2_rate).replace(".", ""),
+                                       str(args.s3_rate).replace(".", ""))
+                                   )
 
 a = pretrain_model_path.split("/")
 b = []
@@ -812,6 +840,7 @@ local_path_generate("/".join(b), create_folder_only=True)
 
 vec_pems04 = vec_virtual
 adj_pems04 = adj_virtual
+args.dataset = "8"
 if os.path.exists(pretrain_model_path):
     print(f'Loading pretrained model at {pretrain_model_path}')
     state = torch.load(pretrain_model_path, map_location='cpu')
@@ -827,9 +856,11 @@ else:
     for dataset in [item for item in datasets if item not in [dataset_bak]]:
         dataset_count = dataset_count + 1
 
-        print(f'\n\n****************************************************************************************************************')
+        print(
+            f'\n\n****************************************************************************************************************')
         print(f'dataset: {dataset}, model: {args.models}, pre_len: {args.pre_len}, labelrate: {args.labelrate}')
-        print(f'****************************************************************************************************************\n\n')
+        print(
+            f'****************************************************************************************************************\n\n')
 
         if dataset == '4':
             g = vec_pems04
@@ -962,7 +993,8 @@ else:
 
 
         train_dataloader, val_dataloader, test_dataloader, adj, max_speed, scaler = load_data(args)
-        train_X, train_Y, val_X, val_Y, test_X, test_Y, max_speed, scaler = load_graphdata_channel3(args, time, scaler, visualize=False)
+        train_X, train_Y, val_X, val_Y, test_X, test_Y, max_speed, scaler = load_graphdata_channel3(args, time, scaler,
+                                                                                                    visualize=False)
         print([i.shape for i in [train_X, train_Y, val_X, val_Y, test_X, test_Y]])
         train_dataloader = MyDataLoader(torch.FloatTensor(train_X), torch.FloatTensor(train_Y),
                                         batch_size=args.batch_size)
@@ -970,9 +1002,9 @@ else:
         test_dataloader = MyDataLoader(torch.FloatTensor(test_X), torch.FloatTensor(test_Y), batch_size=args.batch_size)
         adj = 0
         model = DASTNet(input_dim=args.vec_dim, hidden_dim=args.hidden_dim, encode_dim=args.enc_dim,
-                            device=device, batch_size=args.batch_size, etype=args.etype, pre_len=args.pre_len,
-                            dataset=args.dataset, ft_dataset=dataset_bak,
-                            adj_pems04=adj_pems04, adj_pems07=adj_pems07, adj_pems08=adj_pems08).to(device)
+                        device=device, batch_size=args.batch_size, etype=args.etype, pre_len=args.pre_len,
+                        dataset=args.dataset, ft_dataset=dataset_bak,
+                        adj_pems04=adj_pems04, adj_pems07=adj_pems07, adj_pems08=adj_pems08).to(device)
         optimizer = optim.SGD([{'params': model.parameters()},
                                {'params': domain_classifier.parameters()}], lr=args.learning_rate, momentum=0.8)
 
@@ -993,7 +1025,8 @@ type = 'fine-tune'
 args.epoch = args.fine_epoch
 
 print(f'\n\n*******************************************************************************************')
-print(f'dataset: {args.dataset}, model: {args.models}, pre_len: {args.pre_len}, labelrate: {args.labelrate}, seed: {args.division_seed}')
+print(
+    f'dataset: {args.dataset}, model: {args.models}, pre_len: {args.pre_len}, labelrate: {args.labelrate}, seed: {args.division_seed}')
 print(f'*******************************************************************************************\n\n')
 
 if args.dataset == '4':
@@ -1005,9 +1038,9 @@ elif args.dataset == '8':
 
 train_dataloader, val_dataloader, test_dataloader, adj, max_speed, scaler = load_data(args, cut=True)
 model = DASTNet(input_dim=args.vec_dim, hidden_dim=args.hidden_dim, encode_dim=args.enc_dim,
-                    device=device, batch_size=args.batch_size, etype=args.etype, pre_len=args.pre_len,
-                    dataset=args.dataset, ft_dataset=args.dataset,
-                    adj_pems04=adj_pems04, adj_pems07=adj_pems07, adj_pems08=adj_pems08).to(device)
+                device=device, batch_size=args.batch_size, etype=args.etype, pre_len=args.pre_len,
+                dataset=args.dataset, ft_dataset=args.dataset,
+                adj_pems04=adj_pems04, adj_pems07=adj_pems07, adj_pems08=adj_pems08).to(device)
 optimizer = optim.SGD([{'params': model.parameters()},
                        {'params': domain_classifier.parameters()}], lr=args.learning_rate, momentum=0.8)
 model.load_state_dict(state['model'])
