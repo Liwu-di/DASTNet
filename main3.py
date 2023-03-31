@@ -356,7 +356,7 @@ if os.path.exists(pretrain_model_path):
 else:
     print(f'No existing pretrained model at {pretrain_model_path}')
     args.val = args.test = False
-    datasets = ["4", "7"]
+    datasets = ["4"]
     dataset_bak = args.dataset
     labelrate_bak = args.labelrate
     args.labelrate = 100
