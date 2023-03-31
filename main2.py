@@ -15,7 +15,7 @@ import torch.optim as optim
 from utils.funcs import load_data, load_all_adj
 from utils.funcs import masked_loss
 from utils.funcs import *
-from utils.vec import generate_vector
+from utils.vec import generate_vector, generate_vector2
 from model import DASTNet, Domain_classifier_DG
 from PaperCrawlerUtil.common_util import *
 
@@ -256,7 +256,7 @@ if os.path.exists(pems04_emb_path):
 else:
     print(f'Generating pems04 embedding...')
     args.dataset = '4'
-    vec_pems04, _ = generate_vector(args)
+    vec_pems04, _ = generate_vector2(args)
     vec_pems04 = vec_pems04.to(device)
     print(f'Saving pems04 embedding...')
     torch.save(vec_pems04.cpu(), pems04_emb_path)
@@ -268,7 +268,7 @@ if os.path.exists(pems07_emb_path):
 else:
     print(f'Generating pems07 embedding...')
     args.dataset = '7'
-    vec_pems07, _ = generate_vector(args)
+    vec_pems07, _ = generate_vector2(args)
     vec_pems07 = vec_pems07.to(device)
     print(f'Saving pems07 embedding...')
     torch.save(vec_pems07.cpu(), pems07_emb_path)
@@ -280,7 +280,7 @@ if os.path.exists(pems08_emb_path):
 else:
     print(f'Generating pems08 embedding...')
     args.dataset = '8'
-    vec_pems08, _ = generate_vector(args)
+    vec_pems08, _ = generate_vector2(args)
     vec_pems08 = vec_pems08.to(device)
     print(f'Saving pems08 embedding...')
     torch.save(vec_pems08.cpu(), pems08_emb_path)
