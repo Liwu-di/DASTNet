@@ -696,10 +696,6 @@ def model_train(args, model, optimizer):
 
 device = torch.device("cuda:" + str(args.device) if torch.cuda.is_available() else "cpu")
 print(f'device: {device}')
-if args.c != "default":
-    c = ast.literal_eval(args.c)
-    record = ResearchRecord(**c)
-    record_id = record.insert(__file__, get_timestamp(), args.__str__())
 torch.manual_seed(0)
 np.random.seed(0)
 
