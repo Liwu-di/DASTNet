@@ -93,9 +93,9 @@ def train(dur, model, optimizer, total_step, start_step):
         if args.model not in ['DCRNN', 'STGCN', 'HA']:
             if type == 'pretrain':
                 pred, shared_pems04_feat, shared_pems07_feat, shared_pems08_feat = model(vec_pems04, vec_pems07,
-                                                                                         vec_pems08, feat, False)
+                                                                                         vec_pems08, feat, False, args.need_road)
             elif type == 'fine-tune':
-                pred = model(vec_pems04, vec_pems07, vec_pems08, feat, False)
+                pred = model(vec_pems04, vec_pems07, vec_pems08, feat, False, args.need_road)
 
             pred = pred.transpose(1, 2).reshape((-1, feat.size(2)))
             label = label.reshape((-1, label.size(2)))
@@ -154,7 +154,7 @@ def train(dur, model, optimizer, total_step, start_step):
         label = torch.FloatTensor(label).to(device)
         if torch.sum(scaler.inverse_transform(label)) <= 0.001:
             continue
-        pred = model(vec_pems04, vec_pems07, vec_pems08, feat, True)
+        pred = model(vec_pems04, vec_pems07, vec_pems08, feat, True, args.need_road)
         pred = pred.transpose(1, 2).reshape((-1, feat.size(2)))
         label = label.reshape((-1, label.size(2)))
         mae_val, rmse_val, mape_val = masked_loss(scaler.inverse_transform(pred), scaler.inverse_transform(label),
@@ -182,7 +182,7 @@ def test():
         if torch.sum(scaler.inverse_transform(label)) <= 0.001:
             continue
 
-        pred = model(vec_pems04, vec_pems07, vec_pems08, feat, True)
+        pred = model(vec_pems04, vec_pems07, vec_pems08, feat, True, args.need_road)
         pred = pred.transpose(1, 2).reshape((-1, feat.size(2)))
         label = label.reshape((-1, label.size(2)))
 
