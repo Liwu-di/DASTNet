@@ -820,11 +820,15 @@ bak_test = args.test
 type = 'pretrain'
 pretrain_model_path = os.path.join('{}'.format(cur_dir), 'pretrained', 'transfer_models',
                                    '{}'.format(args.dataset), '{}_prelen'.format(args.pre_len),
-                                   'flow_model4_{}_epoch_{}_{}_{}_{}_{}_{}.pkl'.format(
+                                   'flow_model4_{}_epoch_{}_{}_{}_{}_{}_{}{}{}{}.pkl'.format(
                                        args.models, args.epoch, args.dataname, args.datatype,
                                        str(args.s1_rate).replace(".", ""),
                                        str(args.s2_rate).replace(".", ""),
-                                       str(args.s3_rate).replace(".", ""))
+                                       str(args.s3_rate).replace(".", ""),
+                                       str(args.learning_rate),
+                                       str(args.batch_size),
+                                       str(args.split_ratio)
+                                   )
                                    )
 
 a = pretrain_model_path.split("/")
