@@ -20,8 +20,9 @@ from PaperCrawlerUtil.common_util import *
 from PaperCrawlerUtil.research_util import *
 import ast
 
-
 basic_config(logs_style=LOG_STYLE_ALL)
+
+
 def arg_parse(parser):
     parser.add_argument('--dataset', type=str, default='4', help='dataset')
     parser.add_argument('--seed', type=int, default=0, help='seed')
@@ -98,7 +99,8 @@ def train(dur, model, optimizer, total_step, start_step):
         optimizer.zero_grad()
         if args.model not in ['DCRNN', 'STGCN', 'HA']:
             if type == 'pretrain':
-                pred, shared_pems04_feat, shared_pems07_feat, shared_pems08_feat = model(vec_pems04, vec_pems07, vec_pems08, feat, False)
+                pred, shared_pems04_feat, shared_pems07_feat, shared_pems08_feat = model(vec_pems04, vec_pems07,
+                                                                                         vec_pems08, feat, False)
             elif type == 'fine-tune':
                 pred = model(vec_pems04, vec_pems07, vec_pems08, feat, False)
 
@@ -130,7 +132,8 @@ def train(dur, model, optimizer, total_step, start_step):
         if type == 'pretrain':
             train_correct = pems04_correct + pems07_correct + pems08_correct
 
-        mae_train, rmse_train, mape_train = masked_loss(scaler.inverse_transform(pred), scaler.inverse_transform(label), maskp=mask)
+        mae_train, rmse_train, mape_train = masked_loss(scaler.inverse_transform(pred), scaler.inverse_transform(label),
+                                                        maskp=mask)
 
         if type == 'pretrain':
             loss = mae_train + args.beta * (args.theta * domain_loss)
@@ -161,13 +164,15 @@ def train(dur, model, optimizer, total_step, start_step):
         pred = model(vec_pems04, vec_pems07, vec_pems08, feat, True)
         pred = pred.transpose(1, 2).reshape((-1, feat.size(2)))
         label = label.reshape((-1, label.size(2)))
-        mae_val, rmse_val, mape_val = masked_loss(scaler.inverse_transform(pred), scaler.inverse_transform(label), maskp=mask)
+        mae_val, rmse_val, mape_val = masked_loss(scaler.inverse_transform(pred), scaler.inverse_transform(label),
+                                                  maskp=mask)
         val_mae.append(mae_val.item())
         val_rmse.append(rmse_val.item())
 
     test_mae, test_rmse, test_mape = test()
     dur.append(time.time() - t0)
-    return np.mean(train_mae), np.mean(train_rmse), np.mean(val_mae), np.mean(val_rmse), test_mae, test_rmse, test_mape, np.mean(train_acc)
+    return np.mean(train_mae), np.mean(train_rmse), np.mean(val_mae), np.mean(
+        val_rmse), test_mae, test_rmse, test_mape, np.mean(train_acc)
 
 
 def test():
@@ -188,7 +193,8 @@ def test():
         pred = pred.transpose(1, 2).reshape((-1, feat.size(2)))
         label = label.reshape((-1, label.size(2)))
 
-        mae_test, rmse_test, mape_test = masked_loss(scaler.inverse_transform(pred), scaler.inverse_transform(label), maskp=mask)
+        mae_test, rmse_test, mape_test = masked_loss(scaler.inverse_transform(pred), scaler.inverse_transform(label),
+                                                     maskp=mask)
 
         test_mae.append(mae_test.item())
         test_rmse.append(rmse_test.item())
@@ -214,7 +220,10 @@ def model_train(args, model, optimizer):
         start_step = epoch * step_per_epoch
         if type == 'fine-tune' and epoch > 1000:
             args.val = True
-        mae_train, rmse_train, mae_val, rmse_val, mae_test, rmse_test, mape_test, train_acc = train(dur, model, optimizer, total_step, start_step)
+        mae_train, rmse_train, mae_val, rmse_val, mae_test, rmse_test, mape_test, train_acc = train(dur, model,
+                                                                                                    optimizer,
+                                                                                                    total_step,
+                                                                                                    start_step)
         log(f'Epoch {epoch} | acc_train: {train_acc: .4f} | mae_train: {mae_train: .4f} | rmse_train: {rmse_train: .4f} | mae_val: {mae_val: .4f} | rmse_val: {rmse_val: .4f} | mae_test: {mae_test: .4f} | rmse_test: {rmse_test: .4f} | mape_test: {mape_test: .4f} | Time(s) {dur[-1]: .4f}')
         epoch += 1
         acc.append(train_acc)
@@ -240,8 +249,9 @@ def model_train(args, model, optimizer):
     print("Optimization Finished!")
     return state
 
+
 args = arg_parse(argparse.ArgumentParser())
-device = torch.device("cuda:"+str(args.device) if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:" + str(args.device) if torch.cuda.is_available() else "cpu")
 print(f'device: {device}')
 if args.c != "default":
     c = ast.literal_eval(args.c)
@@ -269,11 +279,11 @@ if cur_dir[-2:] == 'sh':
     cur_dir = cur_dir[:-2]
 
 pems04_emb_path = os.path.join('{}'.format(cur_dir), 'embeddings', 'node2vec', 'pems04',
-                           '{}_vecdim.pkl'.format(args.vec_dim))
+                               '{}_vecdim.pkl'.format(args.vec_dim))
 pems07_emb_path = os.path.join('{}'.format(cur_dir), 'embeddings', 'node2vec', 'pems07',
-                            '{}_vecdim.pkl'.format(args.vec_dim))
+                               '{}_vecdim.pkl'.format(args.vec_dim))
 pems08_emb_path = os.path.join('{}'.format(cur_dir), 'embeddings', 'node2vec', 'pems08',
-                             '{}_vecdim.pkl'.format(args.vec_dim))
+                               '{}_vecdim.pkl'.format(args.vec_dim))
 
 for i in [pems04_emb_path, pems07_emb_path, pems08_emb_path]:
     a = i.split("/")
@@ -341,7 +351,9 @@ bak_test = args.test
 type = 'pretrain'
 pretrain_model_path = os.path.join('{}'.format(cur_dir), 'pretrained', 'transfer_models',
                                    '{}'.format(args.dataset), '{}_prelen'.format(args.pre_len),
-                                   'flow_model4_{}_epoch_{}.pkl'.format(args.model, args.epoch))
+                                   'flow_model4_{}_epoch_{}{}{}.pkl'.format(args.model, args.epoch,
+                                                                            args.dataname,
+                                                                            args.datatype))
 
 a = pretrain_model_path.split("/")
 b = []
@@ -349,7 +361,6 @@ for i in a:
     if "pkl" not in i:
         b.append(i)
 local_path_generate("/".join(b), create_folder_only=True)
-
 
 if os.path.exists(pretrain_model_path):
     print(f'Loading pretrained model at {pretrain_model_path}')
@@ -366,9 +377,11 @@ else:
     for dataset in [item for item in datasets if item not in [dataset_bak]]:
         dataset_count = dataset_count + 1
 
-        print(f'\n\n****************************************************************************************************************')
+        print(
+            f'\n\n****************************************************************************************************************')
         print(f'dataset: {dataset}, model: {args.model}, pre_len: {args.pre_len}, labelrate: {args.labelrate}')
-        print(f'****************************************************************************************************************\n\n')
+        print(
+            f'****************************************************************************************************************\n\n')
 
         if dataset == '4':
             g = vec_pems04
@@ -380,9 +393,9 @@ else:
         args.dataset = dataset
         train_dataloader, val_dataloader, test_dataloader, adj, max_speed, scaler = load_data(args)
         model = DASTNet(input_dim=args.vec_dim, hidden_dim=args.hidden_dim, encode_dim=args.enc_dim,
-                            device=device, batch_size=args.batch_size, etype=args.etype, pre_len=args.pre_len,
-                            dataset=args.dataset, ft_dataset=dataset_bak,
-                            adj_pems04=adj_pems04, adj_pems07=adj_pems07, adj_pems08=adj_pems08).to(device)
+                        device=device, batch_size=args.batch_size, etype=args.etype, pre_len=args.pre_len,
+                        dataset=args.dataset, ft_dataset=dataset_bak,
+                        adj_pems04=adj_pems04, adj_pems07=adj_pems07, adj_pems08=adj_pems08).to(device)
         optimizer = optim.SGD([{'params': model.parameters()},
                                {'params': domain_classifier.parameters()}], lr=args.learning_rate, momentum=0.8)
 
@@ -403,7 +416,8 @@ type = 'fine-tune'
 args.epoch = args.fine_epoch
 
 print(f'\n\n*******************************************************************************************')
-print(f'dataset: {args.dataset}, model: {args.model}, pre_len: {args.pre_len}, labelrate: {args.labelrate}, seed: {args.division_seed}')
+print(
+    f'dataset: {args.dataset}, model: {args.model}, pre_len: {args.pre_len}, labelrate: {args.labelrate}, seed: {args.division_seed}')
 print(f'*******************************************************************************************\n\n')
 
 if args.dataset == '4':
@@ -415,9 +429,9 @@ elif args.dataset == '8':
 
 train_dataloader, val_dataloader, test_dataloader, adj, max_speed, scaler = load_data(args, cut=True)
 model = DASTNet(input_dim=args.vec_dim, hidden_dim=args.hidden_dim, encode_dim=args.enc_dim,
-                    device=device, batch_size=args.batch_size, etype=args.etype, pre_len=args.pre_len,
-                    dataset=args.dataset, ft_dataset=args.dataset,
-                    adj_pems04=adj_pems04, adj_pems07=adj_pems07, adj_pems08=adj_pems08).to(device)
+                device=device, batch_size=args.batch_size, etype=args.etype, pre_len=args.pre_len,
+                dataset=args.dataset, ft_dataset=args.dataset,
+                adj_pems04=adj_pems04, adj_pems07=adj_pems07, adj_pems08=adj_pems08).to(device)
 optimizer = optim.SGD([{'params': model.parameters()},
                        {'params': domain_classifier.parameters()}], lr=args.learning_rate, momentum=0.8)
 model.load_state_dict(state['model'])
