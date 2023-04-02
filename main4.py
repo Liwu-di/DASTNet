@@ -135,6 +135,7 @@ def train(dur, model, optimizer, total_step, start_step, need_road):
 
         if type == 'pretrain':
             loss = mae_train + args.beta * (args.theta * domain_loss)
+            log("mae{} domain{}".format(str(mae_train), str(domain_loss)))
         elif type == 'fine-tune':
             loss = mae_train
 
