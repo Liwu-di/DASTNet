@@ -37,6 +37,13 @@ class Grad(torch.autograd.Function):
     def grad(x, constant):
         return Grad.apply(x, constant)
 
+
+def functional_linear(weight, bias, inputs):
+    res = torch.mm(inputs, weight.t()) + bias
+    return res
+
+
+
 class Domain_classifier_DG(nn.Module):
 
     def __init__(self, num_class, encode_dim):
@@ -93,6 +100,16 @@ class VGRULinear(nn.Module):
             "bias_init_value": self._bias_init_value,
         }
 
+    def functional_forward(self, inputs, hidden_state, weight, bias):
+        batch_size, num_nodes = inputs.shape[0], inputs.shape[1]
+        inputs = inputs.reshape((batch_size, num_nodes, 1))
+        hidden_state = hidden_state.reshape((batch_size, num_nodes, self._num_gru_units))
+        concatenation = torch.cat((inputs, hidden_state), dim=2)
+        concatenation = concatenation.reshape((-1, self._num_gru_units + 1))
+        outputs = concatenation @ weight + bias
+        outputs = outputs.reshape((batch_size, num_nodes, self._output_dim))
+        outputs = outputs.reshape((batch_size, num_nodes * self._output_dim))
+        return outputs
 
 class VGRUCell(nn.Module):
     def __init__(self, hidden_dim: int, adj_encodedim):
@@ -112,7 +129,7 @@ class VGRUCell(nn.Module):
     def reset_parameters(self):
         nn.init.xavier_uniform_(self.weights, gain=nn.init.calculate_gain("tanh"))
 
-    def forward(self, inputs, hidden_state, feat, need_road):
+    def forward(self, inputs, hidden_state, feat, need_road=True):
         batch_size, num_nodes = inputs.shape[0], inputs.shape[1]
         concatenation = torch.sigmoid(self.linear1(inputs, hidden_state))
         r, u = torch.chunk(concatenation, chunks=2, dim=1)
@@ -129,6 +146,22 @@ class VGRUCell(nn.Module):
         else:
             new_hidden_state = self.linear3(new_hidden_state)
             new_hidden_state = new_hidden_state.reshape((batch_size, num_nodes * self._hidden_dim))
+        return new_hidden_state, new_hidden_state
+
+    def functional_forward(self, inputs, hidden_state, feat, w1, b1, w2, b2, wg, bg, wl, bl):
+        batch_size, num_nodes = inputs.shape[0], inputs.shape[1]
+        concatenation = torch.sigmoid(self.linear1.functional_forward(inputs, hidden_state, w1, b1))
+        r, u = torch.chunk(concatenation, chunks=2, dim=1)
+        c = torch.tanh(self.linear2.functional_forward(inputs, r * hidden_state, w2, b2))
+        new_hidden_state = u * hidden_state + (1 - u) * c
+
+        new_hidden_state = new_hidden_state.reshape((batch_size * num_nodes, self._hidden_dim))
+        feat = feat.reshape((batch_size * num_nodes, feat.shape[-1]))
+        feat = feat @ wg + bg
+        new_hidden_state = torch.cat((new_hidden_state, feat), 1)
+        new_hidden_state = functional_linear(wl, bl, new_hidden_state)
+        new_hidden_state = new_hidden_state.reshape((batch_size, num_nodes * self._hidden_dim))
+
         return new_hidden_state, new_hidden_state
 
 
@@ -152,6 +185,21 @@ class VGRU_FEAT(nn.Module):
         last_output = last_output.reshape((-1, last_output.size(2)))
 
         return last_output
+
+    def functional_forward(self, inputs, feat, w1, b1, w2, b2, wg, bg, wl, bl):
+        batch_size, seq_len, num_nodes = inputs.shape
+        outputs = list()
+        hidden_state = torch.zeros(batch_size, num_nodes * self._hidden_dim).type_as(inputs)
+        for i in range(seq_len):
+            output, hidden_state = self.vgru_cell.functional_forward(inputs[:, i, :], hidden_state, feat,
+                                                                     w1, b1, w2, b2, wg, bg, wl, bl)
+            output = output.reshape((batch_size, num_nodes, self._hidden_dim))
+            outputs.append(output)
+        last_output = outputs[-1]
+        last_output = last_output.reshape((-1, last_output.size(2)))
+
+        return last_output
+
 
 class Extractor_N2V(nn.Module):
 
@@ -180,6 +228,26 @@ class Extractor_N2V(nn.Module):
 
         h = self.batch_norm(h.float())
         h = self.adj_encoderlayer2(h.float())
+
+        return h
+
+    def functional_forward(self, h, adj, ew1, eb1, ew2, eb2, bnw, bnb, rm, rv, bn_training):
+        # h = self.adj_encoderlayer1(h.float())
+        h = functional_linear(ew1, eb1, h.float())
+        if self.etype == "gin":
+            pooled = torch.mm(adj.float(), h.float())
+            degree = torch.spmm(adj.float(), torch.ones((adj.shape[0], 1)).float().to(self.device)).to(
+                self.device)
+            degree = torch.where(degree < torch.tensor(1e-6, dtype=degree.dtype, device=degree.device),
+                                 torch.tensor(1.0, dtype=degree.dtype, device=degree.device), degree)
+            pooled = pooled / degree
+            h = pooled + self.eps1 * h
+
+        # h = self.batch_norm(h.float())
+        h = torch.nn.functional.batch_norm(h.float(), running_mean=rm, running_var=rv, bias=bnb, weight=bnw,
+                                           training=bn_training)
+        # h = self.adj_encoderlayer2(h.float())
+        h = functional_linear(ew2, eb2, h.float())
 
         return h
 
@@ -278,6 +346,370 @@ class DASTNet(nn.Module):
                 h_pems08 = pems08_feat.expand(self.batch_size, self.pems08_adj.shape[0], self.encode_dim)
                 pred = self.speed_predictor(feat, h_pems08, need_road)
                 pred = self.pems08_linear(pred)
+                pred = pred.reshape((self.batch_size, self.pems08_adj.shape[0], -1))
+
+            return pred
+
+    def functional_forward(self, vec_pems04, vec_pems07, vec_pems08, feat, eval, params, bn_vars, bn_training, data_set="4"):
+        if self.dataset != self.finetune_dataset:
+            if not eval:
+                shared_pems04_feat = self.shared_pems04_featExtractor.functional_forward(vec_pems04, self.pems04_adj,
+                                                                                         params[
+                                                                                             "shared_pems04_featExtractor.adj_encoderlayer1.weight"],
+                                                                                         params[
+                                                                                             "shared_pems04_featExtractor.adj_encoderlayer1.bias"],
+                                                                                         params[
+                                                                                             "shared_pems04_featExtractor.adj_encoderlayer2.weight"],
+                                                                                         params[
+                                                                                             "shared_pems04_featExtractor.adj_encoderlayer2.bias"],
+                                                                                         params[
+                                                                                             "shared_pems04_featExtractor.batch_norm.weight"],
+                                                                                         params[
+                                                                                             "shared_pems04_featExtractor.batch_norm.bias"],
+                                                                                         bn_vars[
+                                                                                             "pems04_featExtractor.batch_norm.running_mean"],
+                                                                                         bn_vars[
+                                                                                             "pems04_featExtractor.batch_norm.running_var"]
+
+                                                                                         , bn_training).to(self.device)
+                shared_pems07_feat = self.shared_pems07_featExtractor.functional_forward(vec_pems07, self.pems07_adj,
+                                                                                         params[
+                                                                                             "shared_pems07_featExtractor.adj_encoderlayer1.weight"],
+                                                                                         params[
+                                                                                             "shared_pems07_featExtractor.adj_encoderlayer1.bias"],
+                                                                                         params[
+                                                                                             "shared_pems07_featExtractor.adj_encoderlayer2.weight"],
+                                                                                         params[
+                                                                                             "shared_pems07_featExtractor.adj_encoderlayer2.bias"],
+                                                                                         params[
+                                                                                             "shared_pems07_featExtractor.batch_norm.weight"],
+                                                                                         params[
+                                                                                             "shared_pems07_featExtractor.batch_norm.bias"],
+                                                                                         bn_vars[
+                                                                                             "pems07_featExtractor.batch_norm.running_mean"],
+                                                                                         bn_vars[
+                                                                                             "pems07_featExtractor.batch_norm.running_var"]
+                                                                                         , bn_training).to(self.device)
+                shared_pems08_feat = self.shared_pems08_featExtractor.functional_forward(vec_pems08, self.pems08_adj,
+                                                                                         params[
+                                                                                             "shared_pems08_featExtractor.adj_encoderlayer1.weight"],
+                                                                                         params[
+                                                                                             "shared_pems08_featExtractor.adj_encoderlayer1.bias"],
+                                                                                         params[
+                                                                                             "shared_pems08_featExtractor.adj_encoderlayer2.weight"],
+                                                                                         params[
+                                                                                             "shared_pems08_featExtractor.adj_encoderlayer2.bias"],
+                                                                                         params[
+                                                                                             "shared_pems08_featExtractor.batch_norm.weight"],
+                                                                                         params[
+                                                                                             "shared_pems08_featExtractor.batch_norm.bias"],
+                                                                                         bn_vars[
+                                                                                             "pems08_featExtractor.batch_norm.running_mean"],
+                                                                                         bn_vars[
+                                                                                             "pems08_featExtractor.batch_norm.running_var"]
+                                                                                         , bn_training).to(self.device)
+            else:
+                if data_set == '4' or data_set == 'ny':
+                    shared_pems04_feat = self.shared_pems04_featExtractor.functional_forward(vec_pems04,
+                                                                                             self.pems04_adj,
+                                                                                             params[
+                                                                                                 "shared_pems04_featExtractor.adj_encoderlayer1.weight"],
+                                                                                             params[
+                                                                                                 "shared_pems04_featExtractor.adj_encoderlayer1.bias"],
+                                                                                             params[
+                                                                                                 "shared_pems04_featExtractor.adj_encoderlayer2.weight"],
+                                                                                             params[
+                                                                                                 "shared_pems04_featExtractor.adj_encoderlayer2.bias"],
+                                                                                             params[
+                                                                                                 "shared_pems04_featExtractor.batch_norm.weight"],
+                                                                                             params[
+                                                                                                 "shared_pems04_featExtractor.batch_norm.bias"],
+                                                                                             bn_vars[
+                                                                                                 "shared_pems04_featExtractor.batch_norm.running_mean"],
+                                                                                             bn_vars[
+                                                                                                 "shared_pems04_featExtractor.batch_norm.running_var"]
+                                                                                             , bn_training).to(self.device)
+                elif data_set == '7' or data_set == 'chi':
+                    shared_pems07_feat = self.shared_pems07_featExtractor.functional_forward(vec_pems07,
+                                                                                             self.pems07_adj,
+                                                                                             params[
+                                                                                                 "shared_pems07_featExtractor.adj_encoderlayer1.weight"],
+                                                                                             params[
+                                                                                                 "shared_pems07_featExtractor.adj_encoderlayer1.bias"],
+                                                                                             params[
+                                                                                                 "shared_pems07_featExtractor.adj_encoderlayer2.weight"],
+                                                                                             params[
+                                                                                                 "shared_pems07_featExtractor.adj_encoderlayer2.bias"],
+                                                                                             params[
+                                                                                                 "shared_pems07_featExtractor.batch_norm.weight"],
+                                                                                             params[
+                                                                                                 "shared_pems07_featExtractor.batch_norm.bias"],
+                                                                                             bn_vars[
+                                                                                                 "shared_pems07_featExtractor.batch_norm.running_mean"],
+                                                                                             bn_vars[
+                                                                                                 "shared_pems07_featExtractor.batch_norm.running_var"]
+                                                                                             , bn_training).to(self.device)
+                elif data_set == '8' or data_set == 'dc':
+                    shared_pems08_feat = self.shared_pems08_featExtractor.functional_forward(vec_pems08,
+                                                                                             self.pems08_adj,
+                                                                                             params[
+                                                                                                 "shared_pems08_featExtractor.adj_encoderlayer1.weight"],
+                                                                                             params[
+                                                                                                 "shared_pems08_featExtractor.adj_encoderlayer1.bias"],
+                                                                                             params[
+                                                                                                 "shared_pems08_featExtractor.adj_encoderlayer2.weight"],
+                                                                                             params[
+                                                                                                 "shared_pems08_featExtractor.adj_encoderlayer2.bias"],
+                                                                                             params[
+                                                                                                 "shared_pems08_featExtractor.batch_norm.weight"],
+                                                                                             params[
+                                                                                                 "shared_pems08_featExtractor.batch_norm.bias"],
+                                                                                             bn_vars[
+                                                                                                 "shared_pems08_featExtractor.batch_norm.running_mean"],
+                                                                                             bn_vars[
+                                                                                                 "shared_pems08_featExtractor.batch_norm.running_var"]
+                                                                                             , bn_training).to(self.device)
+            if data_set == '4' or data_set == 'ny':
+                h_pems04 = shared_pems04_feat.expand(self.batch_size, self.pems04_adj.shape[0], self.encode_dim)
+                pred = self.speed_predictor.functional_forward(feat, h_pems04,
+                                                               params["speed_predictor.vgru_cell.linear1.weights"],
+                                                               params["speed_predictor.vgru_cell.linear1.biases"],
+                                                               params["speed_predictor.vgru_cell.linear2.weights"],
+                                                               params["speed_predictor.vgru_cell.linear2.biases"],
+                                                               params["speed_predictor.vgru_cell.weights"],
+                                                               params["speed_predictor.vgru_cell.bias"],
+                                                               params["speed_predictor.vgru_cell.linear.weight"],
+                                                               params["speed_predictor.vgru_cell.linear.bias"])
+                # pred = self.pems04_linear(pred)
+                pred = functional_linear(params["pems04_linear.weight"],
+                                         params["pems04_linear.bias"], pred)
+                pred = pred.reshape((self.batch_size, self.pems04_adj.shape[0], -1))
+            elif data_set == '7' or data_set == 'chi':
+                h_pems07 = shared_pems07_feat.expand(self.batch_size, self.pems07_adj.shape[0], self.encode_dim)
+                pred = self.speed_predictor.functional_forward(feat, h_pems07,
+                                                               params["speed_predictor.vgru_cell.linear1.weights"],
+                                                               params["speed_predictor.vgru_cell.linear1.biases"],
+                                                               params["speed_predictor.vgru_cell.linear2.weights"],
+                                                               params["speed_predictor.vgru_cell.linear2.biases"],
+                                                               params["speed_predictor.vgru_cell.weights"],
+                                                               params["speed_predictor.vgru_cell.bias"],
+                                                               params["speed_predictor.vgru_cell.linear.weight"],
+                                                               params["speed_predictor.vgru_cell.linear.bias"]
+                                                               )
+                # pred = self.pems07_linear(pred)
+                pred = functional_linear(params["pems07_linear.weight"],
+                                         params["pems07_linear.bias"], pred)
+                pred = pred.reshape((self.batch_size, self.pems07_adj.shape[0], -1))
+            elif data_set == '8' or data_set == 'dc':
+                h_pems08 = shared_pems08_feat.expand(self.batch_size, self.pems08_adj.shape[0], self.encode_dim)
+                pred = self.speed_predictor.functional_forward(feat, h_pems08,
+                                                               params["speed_predictor.vgru_cell.linear1.weights"],
+                                                               params["speed_predictor.vgru_cell.linear1.biases"],
+                                                               params["speed_predictor.vgru_cell.linear2.weights"],
+                                                               params["speed_predictor.vgru_cell.linear2.biases"],
+                                                               params["speed_predictor.vgru_cell.weights"],
+                                                               params["speed_predictor.vgru_cell.bias"],
+                                                               params["speed_predictor.vgru_cell.linear.weight"],
+                                                               params["speed_predictor.vgru_cell.linear.bias"]
+                                                               )
+                pred = functional_linear(params["pems08_linear.weight"],
+                                         params["pems08_linear.bias"], pred)
+                pred = pred.reshape((self.batch_size, self.pems08_adj.shape[0], -1))
+
+            if not eval:
+                return pred, shared_pems04_feat, shared_pems07_feat, shared_pems08_feat
+            else:
+                return pred
+        else:
+            if data_set == '4' or data_set == 'ny':
+                shared_pems04_feat = self.shared_pems04_featExtractor.functional_forward(vec_pems04, self.pems04_adj,
+                                                                                         params[
+                                                                                             "shared_pems04_featExtractor.adj_encoderlayer1.weight"],
+                                                                                         params[
+                                                                                             "shared_pems04_featExtractor.adj_encoderlayer1.bias"],
+                                                                                         params[
+                                                                                             "shared_pems04_featExtractor.adj_encoderlayer2.weight"],
+                                                                                         params[
+                                                                                             "shared_pems04_featExtractor.adj_encoderlayer2.bias"],
+                                                                                         params[
+                                                                                             "shared_pems04_featExtractor.batch_norm.weight"],
+                                                                                         params[
+                                                                                             "shared_pems04_featExtractor.batch_norm.bias"],
+                                                                                         bn_vars[
+                                                                                             "shared_pems04_featExtractor.batch_norm.running_mean"],
+                                                                                         bn_vars[
+                                                                                             "shared_pems04_featExtractor.batch_norm.running_var"]
+                                                                                         , bn_training).to(self.device)
+                pems04_feat = self.pems04_featExtractor.functional_forward(vec_pems04, self.pems04_adj,
+                                                                           params[
+                                                                               "pems04_featExtractor.adj_encoderlayer1.weight"],
+                                                                           params[
+                                                                               "pems04_featExtractor.adj_encoderlayer1.bias"],
+                                                                           params[
+                                                                               "pems04_featExtractor.adj_encoderlayer2.weight"],
+                                                                           params[
+                                                                               "pems04_featExtractor.adj_encoderlayer2.bias"],
+                                                                           params[
+                                                                               "pems04_featExtractor.batch_norm.weight"],
+                                                                           params[
+                                                                               "pems04_featExtractor.batch_norm.bias"],
+                                                                           bn_vars[
+                                                                               "pems04_featExtractor.batch_norm.running_mean"],
+                                                                           bn_vars[
+                                                                               "pems04_featExtractor.batch_norm.running_var"], bn_training).to(
+                    self.device)
+                pems04_feat = functional_linear(params["combine_pems04_linear.weight"],
+                                                params["combine_pems04_linear.bias"],
+                                                # self.private_pems04_linear(pems04_feat) +
+                                                functional_linear(params["private_pems04_linear.weight"],
+                                                                  params["private_pems04_linear.bias"], pems04_feat)
+                                                +
+                                                functional_linear(params["shared_pems04_linear.weight"],
+                                                                  params["shared_pems04_linear.bias"],
+                                                                  shared_pems04_feat)
+                                                # self.shared_pems04_linear(shared_pems04_feat)
+                                                )
+                h_pems04 = pems04_feat.expand(self.batch_size, self.pems04_adj.shape[0], self.encode_dim)
+                pred = self.speed_predictor.functional_forward(feat, h_pems04,
+                                                               params["speed_predictor.vgru_cell.linear1.weights"],
+                                                               params["speed_predictor.vgru_cell.linear1.biases"],
+                                                               params["speed_predictor.vgru_cell.linear2.weights"],
+                                                               params["speed_predictor.vgru_cell.linear2.biases"],
+                                                               params["speed_predictor.vgru_cell.weights"],
+                                                               params["speed_predictor.vgru_cell.bias"],
+                                                               params["speed_predictor.vgru_cell.linear.weight"],
+                                                               params["speed_predictor.vgru_cell.linear.bias"]
+                                                               )
+                # pred = self.pems04_linear(pred)
+                pred = functional_linear(params["pems04_linear.weight"], params["pems04_linear.bias"], pred)
+                pred = pred.reshape((self.batch_size, self.pems04_adj.shape[0], -1))
+            elif data_set == '7' or data_set == 'chi':
+                shared_pems07_feat = self.shared_pems07_featExtractor.functional_forward(vec_pems07, self.pems07_adj,
+                                                                                         params[
+                                                                                             "shared_pems07_featExtractor.adj_encoderlayer1.weight"],
+                                                                                         params[
+                                                                                             "shared_pems07_featExtractor.adj_encoderlayer1.bias"],
+                                                                                         params[
+                                                                                             "shared_pems07_featExtractor.adj_encoderlayer2.weight"],
+                                                                                         params[
+                                                                                             "shared_pems07_featExtractor.adj_encoderlayer2.bias"],
+                                                                                         params[
+                                                                                             "shared_pems07_featExtractor.batch_norm.weight"],
+                                                                                         params[
+                                                                                             "shared_pems07_featExtractor.batch_norm.bias"],
+                                                                                         bn_vars[
+                                                                                             "shared_pems07_featExtractor.batch_norm.running_mean"],
+                                                                                         bn_vars[
+                                                                                             "shared_pems07_featExtractor.batch_norm.running_var"]
+                                                                                         , bn_training).to(self.device)
+                pems07_feat = self.pems07_featExtractor.functional_forward(vec_pems07, self.pems07_adj,
+                                                                           params[
+                                                                               "pems07_featExtractor.adj_encoderlayer1.weight"],
+                                                                           params[
+                                                                               "pems07_featExtractor.adj_encoderlayer1.bias"],
+                                                                           params[
+                                                                               "pems07_featExtractor.adj_encoderlayer2.weight"],
+                                                                           params[
+                                                                               "pems07_featExtractor.adj_encoderlayer2.bias"],
+                                                                           params[
+                                                                               "pems07_featExtractor.batch_norm.weight"],
+                                                                           params[
+                                                                               "pems07_featExtractor.batch_norm.bias"],
+                                                                           bn_vars[
+                                                                               "pems07_featExtractor.batch_norm.running_mean"],
+                                                                           bn_vars[
+                                                                               "pems07_featExtractor.batch_norm.running_var"], bn_training).to(
+                    self.device)
+                # pems07_feat = self.combine_pems07_linear(
+                pems07_feat = functional_linear(params["combine_pems07_linear.weight"],
+                                                params["combine_pems07_linear.bias"],
+                                                # self.private_pems07_linear(pems07_feat) +
+                                                functional_linear(params["private_pems07_linear.weight"],
+                                                                  params["private_pems07_linear.bias"],
+                                                                  pems07_feat)
+                                                +
+                                                functional_linear(params["shared_pems07_linear.weight"],
+                                                                  params["shared_pems07_linear.bias"],
+                                                                  shared_pems07_feat)
+                                                # self.shared_pems07_linear(shared_pems07_feat)
+                                                )
+                h_pems07 = pems07_feat.expand(self.batch_size, self.pems07_adj.shape[0], self.encode_dim)
+                pred = self.speed_predictor.functional_forward(feat, h_pems07,
+                                                               params["speed_predictor.vgru_cell.linear1.weights"],
+                                                               params["speed_predictor.vgru_cell.linear1.biases"],
+                                                               params["speed_predictor.vgru_cell.linear2.weights"],
+                                                               params["speed_predictor.vgru_cell.linear2.biases"],
+                                                               params["speed_predictor.vgru_cell.weights"],
+                                                               params["speed_predictor.vgru_cell.bias"],
+                                                               params["speed_predictor.vgru_cell.linear.weight"],
+                                                               params["speed_predictor.vgru_cell.linear.bias"]
+                                                               )
+                # pred = self.pems07_linear(pred)
+                pred = functional_linear(params["pems07_linear.weight"], params["pems07_linear.bias"], pred)
+                pred = pred.reshape((self.batch_size, self.pems07_adj.shape[0], -1))
+            elif data_set == '8' or data_set == 'dc':
+                shared_pems08_feat = self.shared_pems08_featExtractor.functional_forward(vec_pems08, self.pems08_adj,
+                                                                                         params[
+                                                                                             "shared_pems08_featExtractor.adj_encoderlayer1.weight"],
+                                                                                         params[
+                                                                                             "shared_pems08_featExtractor.adj_encoderlayer1.bias"],
+                                                                                         params[
+                                                                                             "shared_pems08_featExtractor.adj_encoderlayer2.weight"],
+                                                                                         params[
+                                                                                             "shared_pems08_featExtractor.adj_encoderlayer2.bias"],
+                                                                                         params[
+                                                                                             "shared_pems08_featExtractor.batch_norm.weight"],
+                                                                                         params[
+                                                                                             "shared_pems08_featExtractor.batch_norm.bias"],
+                                                                                         bn_vars[
+                                                                                             "shared_pems08_featExtractor.batch_norm.running_mean"],
+                                                                                         bn_vars[
+                                                                                             "shared_pems08_featExtractor.batch_norm.running_var"]
+                                                                                         , bn_training).to(self.device)
+                pems08_feat = self.pems08_featExtractor.functional_forward(vec_pems08, self.pems08_adj,
+                                                                           params[
+                                                                               "pems08_featExtractor.adj_encoderlayer1.weight"],
+                                                                           params[
+                                                                               "pems08_featExtractor.adj_encoderlayer1.bias"],
+                                                                           params[
+                                                                               "pems08_featExtractor.adj_encoderlayer2.weight"],
+                                                                           params[
+                                                                               "pems08_featExtractor.adj_encoderlayer2.bias"],
+                                                                           params[
+                                                                               "pems08_featExtractor.batch_norm.weight"],
+                                                                           params[
+                                                                               "pems08_featExtractor.batch_norm.bias"],
+                                                                           bn_vars[
+                                                                               "pems08_featExtractor.batch_norm.running_mean"],
+                                                                           bn_vars[
+                                                                               "pems08_featExtractor.batch_norm.running_var"], bn_training).to(
+                    self.device)
+                # pems08_feat = self.combine_pems08_linear(
+                pems08_feat = functional_linear(params["combine_pems08_linear.weight"],
+                                                params["combine_pems08_linear.bias"],
+                                                # self.private_pems08_linear(pems08_feat) +
+                                                functional_linear(params["private_pems08_linear.weight"],
+                                                                  params["private_pems08_linear.bias"],
+                                                                  pems08_feat)
+                                                +
+                                                functional_linear(params["shared_pems08_linear.weight"],
+                                                                  params["shared_pems08_linear.bias"],
+                                                                  shared_pems08_feat)
+                                                # self.shared_pems08_linear(shared_pems08_feat)
+                                                )
+                h_pems08 = pems08_feat.expand(self.batch_size, self.pems08_adj.shape[0], self.encode_dim)
+                pred = self.speed_predictor.functional_forward(feat, h_pems08,
+                                                               params["speed_predictor.vgru_cell.linear1.weights"],
+                                                               params["speed_predictor.vgru_cell.linear1.biases"],
+                                                               params["speed_predictor.vgru_cell.linear2.weights"],
+                                                               params["speed_predictor.vgru_cell.linear2.biases"],
+                                                               params["speed_predictor.vgru_cell.weights"],
+                                                               params["speed_predictor.vgru_cell.bias"],
+                                                               params["speed_predictor.vgru_cell.linear.weight"],
+                                                               params["speed_predictor.vgru_cell.linear.bias"]
+                                                               )
+                # pred = self.pems08_linear(pred)
+                pred = functional_linear(params["pems08_linear.weight"], params["pems08_linear.bias"], pred)
                 pred = pred.reshape((self.batch_size, self.pems08_adj.shape[0], -1))
 
             return pred
