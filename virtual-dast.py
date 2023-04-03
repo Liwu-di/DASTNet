@@ -515,7 +515,7 @@ def select_mask(a):
         return th_maskny
 
 
-def train(dur, model, optimizer, total_step, start_step, need_road):
+def train(dur, model, optimizer, total_step, start_step, need_road, train_dataloader,val_dataloader, testdl, type):
     t0 = time.time()
     train_mae, val_mae, train_rmse, val_rmse, train_acc = list(), list(), list(), list(), list()
     train_correct = 0
@@ -609,13 +609,13 @@ def train(dur, model, optimizer, total_step, start_step, need_road):
         val_mae.append(mae_val.item())
         val_rmse.append(rmse_val.item())
 
-    test_mae, test_rmse, test_mape = test()
+    test_mae, test_rmse, test_mape = test(testdl, type)
     dur.append(time.time() - t0)
     return np.mean(train_mae), np.mean(train_rmse), np.mean(val_mae), np.mean(
         val_rmse), test_mae, test_rmse, test_mape, np.mean(train_acc)
 
 
-def test():
+def test(test_dataloader, type):
     if type == 'pretrain':
         domain_classifier.eval()
     model.eval()
@@ -647,7 +647,7 @@ def test():
     return test_mae, test_rmse, test_mape
 
 
-def model_train(args, model, optimizer):
+def model_train(args, model, optimizer, train_dataloader, val_dataloader, test_dataloader, type):
     dur = []
     epoch = 1
     best = 999999999999999
@@ -1009,7 +1009,7 @@ else:
             model.load_state_dict(state['model'])
             optimizer.load_state_dict(state['optim'])
 
-        state = model_train(args, model, optimizer)
+        state = model_train(args, model, optimizer, train_dataloader, val_dataloader, test_dataloader, type)
 
     print(f'Saving model to {pretrain_model_path} ...')
     torch.save(state, pretrain_model_path)
@@ -1044,11 +1044,11 @@ model.load_state_dict(state['model'])
 optimizer.load_state_dict(state['optim'])
 
 if args.labelrate != 0:
-    test_state = model_train(args, model, optimizer)
+    test_state = model_train(args, model, optimizer, train_dataloader, val_dataloader, test_dataloader, type)
     model.load_state_dict(test_state['model'])
     optimizer.load_state_dict(test_state['optim'])
 
-test_mae, test_rmse, test_mape = test()
+test_mae, test_rmse, test_mape = test(test_dataloader, type)
 print(f'mae: {test_mae: .4f}, rmse: {test_rmse: .4f}, mape: {test_mape * 100: .4f}\n\n')
 if args.c != "default":
     if args.need_remark == 1:
