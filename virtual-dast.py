@@ -506,6 +506,415 @@ for i in range(len(virtual_graphs)):
 virtual_edges, virtual_edge_labels = graphs_to_edge_labels(virtual_graphs)
 
 
+class Scoring(nn.Module):
+    def __init__(self, emb_dim, source_mask, target_mask):
+        super().__init__()
+        self.emb_dim = emb_dim
+        self.score = nn.Sequential(nn.Linear(self.emb_dim, self.emb_dim // 2),
+                                   nn.ReLU(inplace=True),
+                                   nn.Linear(self.emb_dim // 2, self.emb_dim // 2))
+        self.source_mask = source_mask
+        self.target_mask = target_mask
+
+    def forward(self, source_emb, target_emb, source_mask, target_mask):
+        """
+        求源城市评分
+        注意这里求评分，是source的每一个区域对于目标城市整体
+        换句话说，是形参2的每一个区域，对于形参3整体
+        :param target_mask:
+        :param source_mask:
+        :param source_emb:
+        :param target_emb:
+        :return:
+        """
+        # target_context = tanh(self.score(target_emb[bool mask]).mean(0))
+        # 对于横向的进行求平均 460*64 -> 460*32 -> 207*32 -> 纵向求平均 1*32 代表所有目标城市
+        target_context = torch.tanh(self.score(target_emb[target_mask.view(-1).bool()]).mean(0))
+        source_trans_emb = self.score(source_emb)
+        source_score = (source_trans_emb * target_context).sum(1)
+        return F.relu(torch.tanh(source_score))[source_mask.view(-1).bool()]
+
+
+cross_num_gat_layers = 2
+cross_in_dim = 14
+cross_hidden_dim = 64
+cross_emb_dim = 64
+cross_num_heads = 2
+cross_mmd_w = args.mmd_w
+cross_et_w = args.et_w
+cross_ma_param = args.ma_coef
+mvgat = MVGAT(len(source_graphs), cross_num_gat_layers, cross_in_dim, cross_hidden_dim, cross_emb_dim, cross_num_heads, True).to(device)
+fusion = FusionModule(len(source_graphs), cross_emb_dim, 0.8).to(device)
+scoring = Scoring(cross_emb_dim, th_mask_virtual, th_mask_target).to(device)
+edge_disc = EdgeTypeDiscriminator(len(source_graphs), cross_emb_dim).to(device)
+mmd = MMD_loss()
+emb_param_list = list(mvgat.parameters()) + list(fusion.parameters()) + list(edge_disc.parameters())
+emb_optimizer = optim.Adam(emb_param_list, lr=args.learning_rate, weight_decay=args.weight_decay)
+mvgat_optimizer = optim.Adam(list(mvgat.parameters()) + list(fusion.parameters()), lr=args.learning_rate,
+                             weight_decay=args.weight_decay)
+
+meta_optimizer = optim.Adam(scoring.parameters(), lr=args.outerlr, weight_decay=args.weight_decay)
+best_val_rmse = 999
+best_test_rmse = 999
+best_test_mae = 999
+best_test_mape = 999
+p_bar.process(5, 1, 5)
+
+class DomainClassify(nn.Module):
+    def __init__(self, emb_dim):
+        super().__init__()
+        self.emb_dim = emb_dim
+        self.dc = nn.Sequential(nn.Linear(self.emb_dim, self.emb_dim // 2),
+                                nn.ReLU(inplace=True),
+                                nn.Linear(self.emb_dim // 2, self.emb_dim // 2),
+                                nn.Linear(self.emb_dim // 2, 2))
+
+    def forward(self, feature):
+        res = torch.sigmoid(self.dc(feature))
+        return res
+
+
+def forward_emb(graphs_, in_feat_, od_adj_, poi_cos_):
+    """
+    1. 图卷积提取图特征 mvgat
+    2. 融合多图特征 fusion
+    3. 对于多图中的s，d，poi进行预测，并计算损失函数
+    :param graphs_:
+    :param in_feat_:
+    :param od_adj_:
+    :param poi_cos_:
+    :return:
+    """
+    # 图注意，注意这里用了小写，指的是forward方法
+    views = mvgat(graphs_, torch.Tensor(in_feat_).to(device))
+    fused_emb, embs = fusion(views)
+    # embs嵌入是5个图，以下找出start，destination， poi图
+    s_emb = embs[-2]
+    d_emb = embs[-1]
+    poi_emb = embs[-3]
+    # start和destination相乘求出记录预测s和d
+    recons_sd = torch.matmul(s_emb, d_emb.transpose(0, 1))
+    # 注意dim维度0和1分别求s和d
+    pred_d = torch.log(torch.softmax(recons_sd, dim=1) + 1e-5)
+    loss_d = (torch.Tensor(od_adj_).to(device) * pred_d).mean()
+    pred_s = torch.log(torch.softmax(recons_sd, dim=0) + 1e-5)
+    loss_s = (torch.Tensor(od_adj_).to(device) * pred_s).mean()
+    # poi预测求差，loss
+    poi_sim = torch.matmul(poi_emb, poi_emb.transpose(0, 1))
+    loss_poi = ((poi_sim - torch.Tensor(poi_cos_).to(device)) ** 2).mean()
+    loss = -loss_s - loss_d + loss_poi
+
+    return loss, fused_emb, embs
+
+if args.node_adapt == "DT":
+    # ============================================================================================
+    # 预训练特征提取网络mvgat， 方便训练域识别网络
+    # ============================================================================================
+    loss_mvgats = []
+    # 实验确定
+    pre = 25
+    for i in range(pre):
+        loss_source, fused_emb_s, embs_s = forward_emb(virtual_graphs, virtual_norm_poi, virtual_od_adj,
+                                                       virtual_poi_cos)
+        loss_target, fused_emb_t, embs_t = forward_emb(target_graphs, target_norm_poi, target_od_adj, target_poi_cos)
+
+        loss_mvgat = loss_source + loss_target
+        meta_optimizer.zero_grad()
+        loss_mvgat.backward()
+        emb_optimizer.step()
+        loss_mvgats.append(loss_mvgat.item())
+    #     log("loss_mvgat:{}".format(str(loss_mvgat)))
+    # loss_mvgats = np.array(loss_mvgats)
+    # x = np.array([i + 1 for i in range(pre)])
+    # plt.plot(x, loss_mvgats)
+    # plt.grid()
+    # plt.legend()
+    # plt.show()
+
+    with torch.no_grad():
+        views = mvgat(virtual_graphs, torch.Tensor(virtual_norm_poi).to(device))
+        # 融合模块指的是把多图的特征融合
+        fused_emb_s, _ = fusion(views)
+        views = mvgat(target_graphs, torch.Tensor(target_norm_poi).to(device))
+        fused_emb_t, _ = fusion(views)
+
+    s1 = np.array([1, 0])
+    st = np.array([0, 1])
+    x = torch.concat((fused_emb_s[th_mask_virtual.view(-1).bool()],
+                      fused_emb_t[th_mask_target.view(-1).bool()]), dim=0)
+    y = []
+    y.extend([s1 for i in range(fused_emb_s[th_mask_virtual.view(-1).bool()].shape[0])])
+    y.extend([st for i in range(fused_emb_t[th_mask_target.view(-1).bool()].shape[0])])
+    y = torch.from_numpy(np.array(y))
+    x = x.cpu().numpy()
+    y = y.numpy()
+    random_ids = np.random.randint(0, x.shape[0], size=x.shape[0])
+    x = x[random_ids]
+    y = y[random_ids]
+    x = torch.from_numpy(x)
+    y = torch.from_numpy(y)
+    dt_train = (x[0: 400], y[0: 400])
+    dt_val = (x[400: 600], y[400: 600])
+    dt_test = (x[600:], y[600:])
+    dt_train_dataset = TensorDataset(dt_train[0], dt_train[1])
+    dt_val_dataset = TensorDataset(dt_val[0], dt_val[1])
+    dt_test_dataset = TensorDataset(dt_test[0], dt_test[1])
+    dt_train_loader = DataLoader(dt_train_dataset, batch_size=args.batch_size, shuffle=True)
+    dt_val_loader = DataLoader(dt_val_dataset, batch_size=args.batch_size)
+    dt_test_loader = DataLoader(dt_test_dataset, batch_size=args.batch_size)
+    dt = DomainClassify(emb_dim=cross_emb_dim)
+    dt.to(device)
+    dt_optimizer = optim.Adam(dt.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
+
+    dc_epoch = 10
+    epoch_loss = []
+    val_loss = []
+    test_loss = []
+    test_accuracy = []
+    for i in range(dc_epoch):
+        temp = []
+        dt.train()
+        for i, (x, y) in enumerate(dt_train_loader):
+            x = x.to(device)
+            y = y.to(device)
+            out = dt(x)
+            loss = ((out - y) ** 2)
+            loss = loss.sum()
+            dt_optimizer.zero_grad()
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(dt.parameters(), max_norm=2)
+            dt_optimizer.step()
+            temp.append(loss.item())
+        epoch_loss.append(np.array(temp).mean())
+        dt.eval()
+        temp = []
+        for i, (x, y) in enumerate(dt_val_loader):
+            x = x.to(device)
+            y = y.to(device)
+            out = dt(x)
+            loss = ((out - y) ** 2)
+            loss = loss.sum()
+            temp.append(loss.item())
+        val_loss.append(np.array(temp).mean())
+        temp = []
+        for i, (x, y) in enumerate(dt_test_loader):
+            x = x.to(device)
+            y = y.to(device)
+            out = dt(x)
+            loss = ((out - y) ** 2)
+            loss = loss.sum()
+            temp.append(loss.item())
+        test_loss.append(np.array(temp).mean())
+        count_sum = 0
+        count_true = 0
+        for i, (x, y) in enumerate(dt_test_loader):
+            x = x.to(device)
+            y = y.to(device)
+            out = dt(x)
+            for i in range(out.shape[0]):
+                xx = out[i]
+                yy = y[i]
+                count_sum = count_sum + 1
+                xxx = xx.argmax()
+                yyy = yy.argmax()
+                if xxx.item() == yyy.item():
+                    count_true = count_true + 1
+        test_accuracy.append(count_true / count_sum)
+
+    #     log((epoch_loss[-1], val_loss[-1], test_loss[-1], test_accuracy[-1]))
+    # plt.plot(np.array([i + 1 for i in range(dc_epoch)]), np.array(epoch_loss), label="train")
+    # plt.plot(np.array([i + 1 for i in range(dc_epoch)]), np.array(val_loss), label="val")
+    # plt.plot(np.array([i + 1 for i in range(dc_epoch)]), np.array(test_loss), label="test")
+    # plt.plot(np.array([i + 1 for i in range(dc_epoch)]), np.array(test_accuracy), label="acc")
+    # plt.xlabel("epoch")
+    # plt.ylabel("loss")
+    # plt.grid()
+    # plt.legend()
+    # plt.show()
+
+    log("============================")
+    log("训练DT网络结束")
+    log("============================")
+
+
+def train_emb_epoch2():
+    # loss， 460*64， 5*460*64
+    loss_source, fused_emb_s, embs_s = forward_emb(virtual_graphs, virtual_norm_poi, virtual_od_adj, virtual_poi_cos)
+    loss_target, fused_emb_t, embs_t = forward_emb(target_graphs, target_norm_poi, target_od_adj, target_poi_cos)
+
+    loss_emb = loss_source + loss_target
+    mmd_losses = None
+    if args.node_adapt == "MMD":
+        # compute domain adaptation loss
+        # 随机抽样128个，计算最大平均误差
+        source_ids = np.random.randint(0, np.sum(mask_virtual), size=(128,))
+        target_ids = np.random.randint(0, np.sum(mask_target), size=(128,))
+        # source1 & target
+        mmd_loss = mmd(fused_emb_s[th_mask_virtual.view(-1).bool()][source_ids, :],
+                       fused_emb_t[th_mask_target.view(-1).bool()][target_ids, :])
+
+        mmd_losses = mmd_loss
+    elif args.node_adapt == "DT":
+        mmd_losses = dt(fused_emb_s[th_mask_virtual.view(-1).bool()]).sum() + \
+                     dt(fused_emb_t[th_mask_target.view(-1).bool()]).sum()
+
+    # 随机抽样边256
+    source_batch_edges = np.random.randint(0, len(virtual_edges), size=(256,))
+    target_batch_edges = np.random.randint(0, len(target_edges), size=(256,))
+    source_batch_src = torch.Tensor(virtual_edges[source_batch_edges, 0]).long()
+    source_batch_dst = torch.Tensor(virtual_edges[source_batch_edges, 1]).long()
+    source_emb_src = fused_emb_s[source_batch_src, :]
+    source_emb_dst = fused_emb_s[source_batch_dst, :]
+    target_batch_src = torch.Tensor(target_edges[target_batch_edges, 0]).long()
+    target_batch_dst = torch.Tensor(target_edges[target_batch_edges, 1]).long()
+    target_emb_src = fused_emb_t[target_batch_src, :]
+    target_emb_dst = fused_emb_t[target_batch_dst, :]
+    # 源城市目的城市使用同样的边分类器
+    pred_source = edge_disc.forward(source_emb_src, source_emb_dst)
+    pred_target = edge_disc.forward(target_emb_src, target_emb_dst)
+    source_batch_labels = torch.Tensor(virtual_edge_labels[source_batch_edges]).to(device)
+    target_batch_labels = torch.Tensor(target_edge_labels[target_batch_edges]).to(device)
+    # -（label*log(sigmod(pred)+0.000001)) + (1-label)*log(1-sigmod+0.000001) sum mean
+    loss_et_source = -((source_batch_labels * torch.log(torch.sigmoid(pred_source) + 1e-6)) + (
+            1 - source_batch_labels) * torch.log(1 - torch.sigmoid(pred_source) + 1e-6)).sum(1).mean()
+    loss_et_target = -((target_batch_labels * torch.log(torch.sigmoid(pred_target) + 1e-6)) + (
+            1 - target_batch_labels) * torch.log(1 - torch.sigmoid(pred_target) + 1e-6)).sum(1).mean()
+    loss_et = loss_et_source + loss_et_target
+
+    emb_optimizer.zero_grad()
+    # 公式11
+    loss = None
+    if args.node_adapt == "MMD":
+        loss = loss_emb + cross_mmd_w * mmd_losses + cross_et_w * loss_et
+    elif args.node_adapt == "DT":
+        loss = loss_emb - cross_mmd_w * mmd_losses + cross_et_w * loss_et
+    loss.backward()
+    emb_optimizer.step()
+    return loss_emb.item(), mmd_losses.item(), loss_et.item()
+
+
+emb_losses = []
+mmd_losses = []
+edge_losses = []
+pretrain_emb_epoch = 80
+# 预训练图数据嵌入，边类型分类，节点对齐 ——> 获得区域特征
+for emb_ep in range(pretrain_emb_epoch):
+    loss_emb_, loss_mmd_, loss_et_ = train_emb_epoch2()
+    emb_losses.append(loss_emb_)
+    mmd_losses.append(loss_mmd_)
+    edge_losses.append(loss_et_)
+log("[%.2fs]Pretrain embeddings for %d epochs, average emb loss %.4f, node loss %.4f, edge loss %.4f" % (
+    time.time() - start_time, pretrain_emb_epoch, np.mean(emb_losses), np.mean(mmd_losses), np.mean(edge_losses)))
+with torch.no_grad():
+    views = mvgat(virtual_graphs, torch.Tensor(virtual_norm_poi).to(device))
+    # 融合模块指的是把多图的特征融合
+    fused_emb_s, _ = fusion(views)
+    views = mvgat(target_graphs, torch.Tensor(target_norm_poi).to(device))
+    fused_emb_t, _ = fusion(views)
+
+long_term_save["emb_losses"] = emb_losses
+long_term_save["mmd_losses"] = mmd_losses
+long_term_save["edge_losses"] = edge_losses
+
+emb_s = fused_emb_s.cpu().numpy()[mask_virtual.reshape(-1)]
+emb_t = fused_emb_t.cpu().numpy()[mask_target.reshape(-1)]
+logreg = LogisticRegression(max_iter=500)
+cvscore_s = cross_validate(logreg, emb_s, virtual_emb_label)['test_score'].mean()
+cvscore_t = cross_validate(logreg, emb_t, target_emb_label)['test_score'].mean()
+log("[%.2fs]Pretraining embedding, source cvscore %.4f, target cvscore %.4f" % \
+    (time.time() - start_time, cvscore_s, cvscore_t))
+log()
+
+def net_fix(source, y, weight, mask, fast_weights, bn_vars, net):
+    pred_source = net.functional_forward(source, mask.bool(), fast_weights, bn_vars, bn_training=True)
+    if len(pred_source.shape) == 4:  # STResNet
+        loss_source = ((pred_source - y) ** 2).view(args.meta_batch_size, 1, -1)[:, :,
+                      mask.view(-1).bool()]
+        loss_source = (loss_source * weight).mean(0).sum()
+    elif len(pred_source.shape) == 3:  # STNet
+        y = y.view(args.meta_batch_size, 1, -1)[:, :, mask.view(-1).bool()]
+        loss_source = (((pred_source - y) ** 2) * weight.view(1, 1, -1))
+        loss_source = loss_source.mean(0).sum()
+    fast_loss = loss_source
+    grads = torch.autograd.grad(fast_loss, fast_weights.values(), create_graph=True)
+    for name, grad in zip(fast_weights.keys(), grads):
+        fast_weights[name] = fast_weights[name] - args.innerlr * grad
+    return fast_loss, fast_weights, bn_vars
+
+
+def meta_train_epoch(s_embs, t_embs, net):
+    meta_query_losses = []
+    for meta_ep in range(args.outeriter):
+        fast_losses = []
+        fast_weights, bn_vars = get_weights_bn_vars(net)
+        source_weights = scoring(s_embs, t_embs, th_mask_virtual, th_mask_target)
+        # inner loop on source, pre-train with weights
+        for meta_it in range(args.sinneriter):
+            s_x1, s_y1 = batch_sampler((torch.Tensor(virtual_train_x), torch.Tensor(virtual_train_y)),
+                                       args.meta_batch_size)
+            s_x1 = s_x1.to(device)
+            s_y1 = s_y1.to(device)
+            fast_loss, fast_weights, bn_vars = net_fix(s_x1, s_y1, source_weights, th_mask_virtual, fast_weights,
+                                                       bn_vars)
+            fast_losses.append(fast_loss.item())
+
+        # inner loop on target, simulate fine-tune
+        # 模拟微调和源训练都是在训练net预测网络，并没有提及权重和特征
+        for meta_it in range(args.tinneriter):
+            t_x, t_y = batch_sampler((torch.Tensor(target_train_x), torch.Tensor(target_train_y)), args.batch_size)
+            t_x = t_x.to(device)
+            t_y = t_y.to(device)
+            pred_t = net.functional_forward(t_x, th_mask_target.bool(), fast_weights, bn_vars, bn_training=True)
+            if len(pred_t.shape) == 4:  # STResNet
+                loss_t = ((pred_t - t_y) ** 2).view(args.batch_size, 1, -1)[:, :, th_mask_target.view(-1).bool()]
+                # log(loss_source.shape)
+                loss_t = loss_t.mean(0).sum()
+            elif len(pred_t.shape) == 3:  # STNet
+                t_y = t_y.view(args.batch_size, 1, -1)[:, :, th_mask_target.view(-1).bool()]
+                # log(t_y.shape)
+                loss_t = ((pred_t - t_y) ** 2)  # .view(1, 1, -1))
+                # log(loss_t.shape)
+                # log(loss_source.shape)
+                # log(source_weights.shape)
+                loss_t = loss_t.mean(0).sum()
+            fast_loss = loss_t
+            fast_losses.append(fast_loss.item())  #
+            grads = torch.autograd.grad(fast_loss, fast_weights.values(), create_graph=True)
+            for name, grad in zip(fast_weights.keys(), grads):
+                fast_weights[name] = fast_weights[name] - args.innerlr * grad
+                # fast_weights[name].add_(grad, alpha = -args.innerlr)
+
+        q_losses = []
+        target_iter = max(args.sinneriter, args.tinneriter)
+        for k in range(3):
+            # query loss
+            x_q = None
+            y_q = None
+            temp_mask = None
+
+            x_q, y_q = batch_sampler((torch.Tensor(target_train_x), torch.Tensor(target_train_y)), args.batch_size)
+            temp_mask = th_mask_target
+            x_q = x_q.to(device)
+            y_q = y_q.to(device)
+            pred_q = net.functional_forward(x_q, temp_mask.bool(), fast_weights, bn_vars, bn_training=True)
+            if len(pred_q.shape) == 4:  # STResNet
+                loss = (((pred_q - y_q) ** 2) * (temp_mask.view(1, 1, lng_target, lat_target)))
+                loss = loss.mean(0).sum()
+            elif len(pred_q.shape) == 3:  # STNet
+                y_q = y_q.view(args.batch_size, 1, -1)[:, :, temp_mask.view(-1).bool()]
+                loss = ((pred_q - y_q) ** 2).mean(0).sum()
+            q_losses.append(loss)
+        q_loss = torch.stack(q_losses).mean()
+        weights_mean = (source_weights ** 2).mean()
+        meta_loss = q_loss + weights_mean * args.weight_reg
+        meta_optimizer.zero_grad()
+        meta_loss.backward(inputs=list(scoring.parameters()), retain_graph=True)
+        torch.nn.utils.clip_grad_norm_(scoring.parameters(), max_norm=2)
+        meta_optimizer.step()
+        meta_query_losses.append(q_loss.item())
+    return np.mean(meta_query_losses)
+
+
 def select_mask(a):
     if a == 420:
         return th_maskdc
