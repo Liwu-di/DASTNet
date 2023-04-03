@@ -4,6 +4,7 @@
 # @FileName: funcs.py
 # @Software: PyCharm
 # @Email   ：liwudi@liwudi.fun
+import copy
 from typing import Dict
 
 import numpy as np
@@ -333,7 +334,7 @@ def load_process_data(args, p_bar):
     # Load spatio temporal data
     # (8784, 21, 20)
     # 8784 = 366 * 24
-    target_data = np.load("./data/%s/%s%s_%s.npy" % (tcity, dataname, tcity, datatype))
+    target_data = np.load("../data/%s/%s%s_%s.npy" % (tcity, dataname, tcity, datatype))
     # (21, 20) 经纬度分割
     lng_target, lat_target = target_data.shape[1], target_data.shape[2]
     # numpy.sum()，求和某一维度或者维度为none时，求和所有，减掉一个维度
@@ -346,7 +347,7 @@ def load_process_data(args, p_bar):
     # (（21， 20）-> 420, （21， 20）-> 420)
     target_emb_label = masked_percentile_label(target_data.sum(0).reshape(-1), mask_target.reshape(-1))
     # (8784, 20, 23)
-    source_data = np.load("./data/%s/%s%s_%s.npy" % (scity, dataname, scity, datatype))
+    source_data = np.load("../data/%s/%s%s_%s.npy" % (scity, dataname, scity, datatype))
     log(source_data.shape)
     # (20, 23)
     lng_source, lat_source = source_data.shape[1], source_data.shape[2]
@@ -355,7 +356,7 @@ def load_process_data(args, p_bar):
     th_mask_source = torch.Tensor(mask_source.reshape(1, lng_source, lat_source)).to(device)
     log("%d valid regions in source" % np.sum(mask_source))
 
-    source_data2 = np.load("./data/%s/%s%s_%s.npy" % (scity2, dataname, scity2, datatype))
+    source_data2 = np.load("../data/%s/%s%s_%s.npy" % (scity2, dataname, scity2, datatype))
     log(source_data2.shape)
     lng_source2, lat_source2 = source_data2.shape[1], source_data2.shape[2]
     mask_source2 = source_data2.sum(0) > 0
@@ -365,7 +366,9 @@ def load_process_data(args, p_bar):
     p_bar.process(2, 1, 5)
     # 按照百分比分配标签
     source_emb_label = masked_percentile_label(source_data.sum(0).reshape(-1), mask_source.reshape(-1))
-
+    bak_source_data = copy.deepcopy(source_data)
+    bak_source_data2 = copy.deepcopy(source_data2)
+    bak_target_data = copy.deepcopy(target_data)
     lag = [-6, -5, -4, -3, -2, -1]
     source_data, smax, smin = min_max_normalize(source_data)
     target_data, max_val, min_val = min_max_normalize(target_data)
@@ -432,9 +435,9 @@ def load_process_data(args, p_bar):
 
     # Load auxiliary data: poi data
     # (20, 23, 14)
-    source_poi = np.load("./data/%s/%s_poi.npy" % (scity, scity))
-    source_poi2 = np.load("./data/%s/%s_poi.npy" % (scity2, scity2))
-    target_poi = np.load("./data/%s/%s_poi.npy" % (tcity, tcity))
+    source_poi = np.load("../data/%s/%s_poi.npy" % (scity, scity))
+    source_poi2 = np.load("../data/%s/%s_poi.npy" % (scity2, scity2))
+    target_poi = np.load("../data/%s/%s_poi.npy" % (tcity, tcity))
     # (460, 14)
     source_poi = source_poi.reshape(lng_source * lat_source, -1)  # regions * classes
     source_poi2 = source_poi2.reshape(lng_source2 * lat_source2, -1)  # regions * classes
@@ -510,7 +513,10 @@ def load_process_data(args, p_bar):
     source_edges2, source_edge_labels2 = graphs_to_edge_labels(source_graphs2)
     target_edges, target_edge_labels = graphs_to_edge_labels(target_graphs)
     p_bar.process(4, 1, 5)
-
+    if args.normal == 0:
+        source_data = bak_source_data
+        source_data2 = bak_source_data2
+        target_data = bak_target_data
     return source_emb_label2, source_t_adj, source_edge_labels2, lag, source_poi, source_data2, \
            source_train_y, source_test_x, source_val_x, source_poi_adj, source_poi_adj2, dataname, target_train_x, \
            th_mask_source2, th_mask_source, target_test_loader, target_poi, target_od_adj, \
