@@ -1091,12 +1091,12 @@ def model_train(args, model, optimizer, train_dataloader, val_dataloader, test_d
     total_step = 200 * step_per_epoch
     source_weights_ma = None
     while epoch <= args.epoch:
-        # if type == 'pretrain':
-        #     source_weights = get_weight(model, type)
-        #     if source_weights_ma is None:
-        #         source_weights_ma = torch.ones_like(source_weights, device=device, requires_grad=False)
-        #     source_weights_ma = cross_ma_param * source_weights_ma + (1 - cross_ma_param) * source_weights
-        #     log(source_weights_ma)
+        if type == 'pretrain':
+            source_weights = get_weight(model, type)
+            if source_weights_ma is None:
+                source_weights_ma = torch.ones_like(source_weights, device=device, requires_grad=False)
+            source_weights_ma = cross_ma_param * source_weights_ma + (1 - cross_ma_param) * source_weights
+            log(source_weights_ma)
         start_step = epoch * step_per_epoch
         if type == 'fine-tune' and epoch > 1000:
             args.val = True
