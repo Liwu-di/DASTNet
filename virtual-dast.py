@@ -825,19 +825,22 @@ log("[%.2fs]Pretraining embedding, source cvscore %.4f, target cvscore %.4f" % \
     (time.time() - start_time, cvscore_s, cvscore_t))
 log()
 
+
 def net_fix(source, y, weight, mask, fast_weights, bn_vars, net):
-    pred_source = net.functional_forward(source, mask.bool(), fast_weights, bn_vars, bn_training=True)
-    if len(pred_source.shape) == 4:  # STResNet
-        loss_source = ((pred_source - y) ** 2).view(args.meta_batch_size, 1, -1)[:, :,
-                      mask.view(-1).bool()]
-        loss_source = (loss_source * weight).mean(0).sum()
-    elif len(pred_source.shape) == 3:  # STNet
-        y = y.view(args.meta_batch_size, 1, -1)[:, :, mask.view(-1).bool()]
-        loss_source = (((pred_source - y) ** 2) * weight.view(1, 1, -1))
-        loss_source = loss_source.mean(0).sum()
-    fast_loss = loss_source
-    grads = torch.autograd.grad(fast_loss, fast_weights.values(), create_graph=True)
-    for name, grad in zip(fast_weights.keys(), grads):
+    pred_source = net.functional_forward(vec_pems04, vec_pems07, vec_pems08, source, True, fast_weights, bn_vars, bn_training=True, data_set="4")
+    label = y.reshape((pred_source.shape[0], -1, pred_source.shape[2]))
+    mask = mask.reshape((1, mask.shape[1] * mask.shape[2], 1))
+    fast_loss = torch.abs(pred_source - label)[:, mask.view(-1).bool(),:]
+    fast_loss = (fast_loss * weight.view((1, -1, 1))).mean(0).sum()
+    a = [(i, torch.autograd.grad(fast_loss, fast_weights[i], create_graph=True, allow_unused=True)) for i in fast_weights.keys()]
+    grads = {}
+    used_fast_weight = OrderedDict()
+    for i in a:
+        if i[1][0] is not None:
+            grads[i[0]] = i[1][0]
+            used_fast_weight[i[0]] = fast_weights[i[0]]
+
+    for name, grad in zip(grads.keys(), grads.values()):
         fast_weights[name] = fast_weights[name] - args.innerlr * grad
     return fast_loss, fast_weights, bn_vars
 
@@ -851,38 +854,37 @@ def meta_train_epoch(s_embs, t_embs, net):
         # inner loop on source, pre-train with weights
         for meta_it in range(args.sinneriter):
             s_x1, s_y1 = batch_sampler((torch.Tensor(virtual_train_x), torch.Tensor(virtual_train_y)),
-                                       args.meta_batch_size)
+                                       args.batch_size)
+            s_x1 = s_x1.reshape((s_x1.shape[0], s_x1.shape[1], s_x1.shape[2] * s_x1.shape[3]))
+            s_y1 = s_y1.reshape((s_y1.shape[0], s_y1.shape[1], s_y1.shape[2] * s_y1.shape[3]))
             s_x1 = s_x1.to(device)
             s_y1 = s_y1.to(device)
-            fast_loss, fast_weights, bn_vars = net_fix(s_x1, s_y1, source_weights, th_mask_virtual, fast_weights,
-                                                       bn_vars)
+            fast_loss, fast_weights, bn_vars = net_fix(s_x1, s_y1, source_weights, th_mask_virtual, fast_weights, bn_vars, net)
             fast_losses.append(fast_loss.item())
 
-        # inner loop on target, simulate fine-tune
-        # 模拟微调和源训练都是在训练net预测网络，并没有提及权重和特征
         for meta_it in range(args.tinneriter):
             t_x, t_y = batch_sampler((torch.Tensor(target_train_x), torch.Tensor(target_train_y)), args.batch_size)
+            t_x = t_x.reshape((t_x.shape[0], t_x.shape[1], t_x.shape[2] * t_x.shape[3]))
+            t_y = t_y.reshape((t_y.shape[0], t_y.shape[1], t_y.shape[2] * t_y.shape[3]))
+
             t_x = t_x.to(device)
             t_y = t_y.to(device)
-            pred_t = net.functional_forward(t_x, th_mask_target.bool(), fast_weights, bn_vars, bn_training=True)
-            if len(pred_t.shape) == 4:  # STResNet
-                loss_t = ((pred_t - t_y) ** 2).view(args.batch_size, 1, -1)[:, :, th_mask_target.view(-1).bool()]
-                # log(loss_source.shape)
-                loss_t = loss_t.mean(0).sum()
-            elif len(pred_t.shape) == 3:  # STNet
-                t_y = t_y.view(args.batch_size, 1, -1)[:, :, th_mask_target.view(-1).bool()]
-                # log(t_y.shape)
-                loss_t = ((pred_t - t_y) ** 2)  # .view(1, 1, -1))
-                # log(loss_t.shape)
-                # log(loss_source.shape)
-                # log(source_weights.shape)
-                loss_t = loss_t.mean(0).sum()
-            fast_loss = loss_t
-            fast_losses.append(fast_loss.item())  #
-            grads = torch.autograd.grad(fast_loss, fast_weights.values(), create_graph=True)
-            for name, grad in zip(fast_weights.keys(), grads):
+            pred_source = net.functional_forward(vec_pems04, vec_pems07, vec_pems08, t_x, True, fast_weights, bn_vars, bn_training=True, data_set="8")
+            label = t_y.reshape((pred_source.shape[0], -1, pred_source.shape[2]))
+            mask = th_mask_target
+            mask = mask.reshape((1, mask.shape[1] * mask.shape[2], 1))
+            fast_loss = torch.abs(pred_source - label)[:, mask.view(-1).bool(),:]
+            fast_loss = fast_loss.mean(0).sum()
+            a = [(i, torch.autograd.grad(fast_loss, fast_weights[i], create_graph=True, allow_unused=True)) for i in fast_weights.keys()]
+            grads = {}
+            used_fast_weight = OrderedDict()
+            for i in a:
+                if i[1][0] is not None:
+                    grads[i[0]] = i[1][0]
+                    used_fast_weight[i[0]] = fast_weights[i[0]]
+
+            for name, grad in zip(grads.keys(), grads.values()):
                 fast_weights[name] = fast_weights[name] - args.innerlr * grad
-                # fast_weights[name].add_(grad, alpha = -args.innerlr)
 
         q_losses = []
         target_iter = max(args.sinneriter, args.tinneriter)
@@ -894,18 +896,20 @@ def meta_train_epoch(s_embs, t_embs, net):
 
             x_q, y_q = batch_sampler((torch.Tensor(target_train_x), torch.Tensor(target_train_y)), args.batch_size)
             temp_mask = th_mask_target
+            x_q = x_q.reshape((x_q.shape[0], x_q.shape[1], x_q.shape[2] * x_q.shape[3]))
+            y_q = y_q.reshape((y_q.shape[0], y_q.shape[1], y_q.shape[2] * y_q.shape[3]))
+
             x_q = x_q.to(device)
             y_q = y_q.to(device)
-            pred_q = net.functional_forward(x_q, temp_mask.bool(), fast_weights, bn_vars, bn_training=True)
-            if len(pred_q.shape) == 4:  # STResNet
-                loss = (((pred_q - y_q) ** 2) * (temp_mask.view(1, 1, lng_target, lat_target)))
-                loss = loss.mean(0).sum()
-            elif len(pred_q.shape) == 3:  # STNet
-                y_q = y_q.view(args.batch_size, 1, -1)[:, :, temp_mask.view(-1).bool()]
-                loss = ((pred_q - y_q) ** 2).mean(0).sum()
-            q_losses.append(loss)
+            pred_source = net.functional_forward(vec_pems04, vec_pems07, vec_pems08, x_q, True, fast_weights, bn_vars, bn_training=True, data_set="8")
+            label = y_q.reshape((pred_source.shape[0], -1, pred_source.shape[2]))
+            mask = temp_mask.reshape((1, temp_mask.shape[1] * temp_mask.shape[2], 1))
+            fast_loss = torch.abs(pred_source - label)[:, mask.view(-1).bool(),:]
+            fast_loss = fast_loss.mean(0).sum()
+
+            q_losses.append(fast_loss)
         q_loss = torch.stack(q_losses).mean()
-        weights_mean = (source_weights ** 2).mean()
+        weights_mean = source_weights.mean()
         meta_loss = q_loss + weights_mean * args.weight_reg
         meta_optimizer.zero_grad()
         meta_loss.backward(inputs=list(scoring.parameters()), retain_graph=True)
@@ -913,6 +917,27 @@ def meta_train_epoch(s_embs, t_embs, net):
         meta_optimizer.step()
         meta_query_losses.append(q_loss.item())
     return np.mean(meta_query_losses)
+
+
+def get_weight(net, type):
+    if type == "fine-tune":
+        return None
+    for emb_ep in range(5):
+        loss_emb_, loss_mmd_, loss_et_ = train_emb_epoch2()
+        emb_losses.append(loss_emb_)
+        mmd_losses.append(loss_mmd_)
+        edge_losses.append(loss_et_)
+
+    with torch.no_grad():
+        views = mvgat(virtual_graphs, torch.Tensor(virtual_norm_poi).to(device))
+        fused_emb_s, _ = fusion(views)
+        views = mvgat(target_graphs, torch.Tensor(target_norm_poi).to(device))
+        fused_emb_t, _ = fusion(views)
+
+    meta_train_epoch(fused_emb_s, fused_emb_t, net)
+    with torch.no_grad():
+        source_weights = scoring(fused_emb_s, fused_emb_t, th_mask_virtual, th_mask_target)
+    return source_weights
 
 
 def select_mask(a):
@@ -1064,8 +1089,14 @@ def model_train(args, model, optimizer, train_dataloader, val_dataloader, test_d
 
     step_per_epoch = train_dataloader.get_num_batch()
     total_step = 200 * step_per_epoch
-
+    source_weights_ma = None
     while epoch <= args.epoch:
+        # if type == 'pretrain':
+        #     source_weights = get_weight(model, type)
+        #     if source_weights_ma is None:
+        #         source_weights_ma = torch.ones_like(source_weights, device=device, requires_grad=False)
+        #     source_weights_ma = cross_ma_param * source_weights_ma + (1 - cross_ma_param) * source_weights
+        #     log(source_weights_ma)
         start_step = epoch * step_per_epoch
         if type == 'fine-tune' and epoch > 1000:
             args.val = True
