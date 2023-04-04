@@ -1007,7 +1007,7 @@ def train(dur, model, optimizer, total_step, start_step, need_road, train_datalo
             train_correct = pems04_correct + pems08_correct
 
         mae_train, rmse_train, mape_train = masked_loss(scaler.inverse_transform(pred), scaler.inverse_transform(label),
-                                                        maskp=mask)
+                                                        maskp=mask, weight=weight)
 
         if type == 'pretrain':
             loss = mae_train + args.beta * (args.theta * domain_loss)
@@ -1089,14 +1089,16 @@ def model_train(args, model, optimizer, train_dataloader, val_dataloader, test_d
 
     step_per_epoch = train_dataloader.get_num_batch()
     total_step = 200 * step_per_epoch
-    source_weights_ma = None
+
     while epoch <= args.epoch:
         if type == 'pretrain' and args.need_weight == 1:
-            source_weights = get_weight(model, type)
-            if source_weights_ma is None:
+            if epoch == 0:
                 source_weights_ma = torch.ones_like(source_weights, device=device, requires_grad=False)
+            source_weights = get_weight(model, type)
             source_weights_ma = cross_ma_param * source_weights_ma + (1 - cross_ma_param) * source_weights
             log(source_weights_ma.mean())
+        else:
+            source_weights_ma = None
         start_step = epoch * step_per_epoch
         if type == 'fine-tune' and epoch > 1000:
             args.val = True
