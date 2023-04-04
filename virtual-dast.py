@@ -1099,7 +1099,6 @@ def model_train(args, model, optimizer, train_dataloader, val_dataloader, test_d
                 source_weights_ma = torch.ones_like(source_weights, device=device, requires_grad=False)
             source_weights_ma = cross_ma_param * source_weights_ma + (1 - cross_ma_param) * source_weights
             log(source_weights_ma.mean())
-            source_weights_ma = torch.ones_like(source_weights_ma, device=device, requires_grad=False)
         else:
             source_weights_ma = None
         start_step = epoch * step_per_epoch
