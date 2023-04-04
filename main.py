@@ -59,11 +59,11 @@ def arg_parse(parser):
 
 def select_mask(a):
     if a == 420:
-        return th_maskdc
+        return dcmask
     elif a == 476:
-        return th_maskchi
+        return chimask
     elif a == 460:
-        return th_maskny
+        return nymask
 
 
 def train(dur, model, optimizer, total_step, start_step):
@@ -118,7 +118,7 @@ def train(dur, model, optimizer, total_step, start_step):
                 domain_loss = pems04_loss + pems08_loss
 
         if type == 'pretrain':
-            train_correct = pems04_correct + pems07_correct + pems08_correct
+            train_correct = pems04_correct + pems08_correct
 
         mae_train, rmse_train, mape_train = masked_loss(scaler.inverse_transform(pred), scaler.inverse_transform(label),
                                                         maskp=mask)
@@ -255,13 +255,13 @@ adj_pems04, adj_pems07, adj_pems08 = load_all_adj(device)
 vec_pems04 = vec_pems07 = vec_pems08 = None, None, None
 dc = np.load("./data/DC/{}DC_{}.npy".format(args.dataname, args.datatype))
 dcmask = dc.sum(0) > 0
-th_maskdc = torch.from_numpy(dcmask.reshape(1, 420)).to(device)
+
 chi = np.load("./data/CHI/{}CHI_{}.npy".format(args.dataname, args.datatype))
 chimask = chi.sum(0) > 0
-th_maskchi = torch.from_numpy(chimask.reshape(1, 476)).to(device)
+
 ny = np.load("./data/NY/{}NY_{}.npy".format(args.dataname, args.datatype))
 nymask = ny.sum(0) > 0
-th_maskny = torch.from_numpy(nymask.reshape(1, 460)).to(device)
+
 cur_dir = os.getcwd()
 if cur_dir[-2:] == 'sh':
     cur_dir = cur_dir[:-2]
