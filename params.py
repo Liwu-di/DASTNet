@@ -29,8 +29,8 @@ def params():
     # 数据类型
     parser.add_argument('--datatype', type=str, default='pickup', help='Within [pickup, dropoff]')
     # 尝试减小，看显存能不能撑住 32 -> 16
-    parser.add_argument('--batch_size', type=int, default=16)
-    parser.add_argument('--batch_size_time_sample', type=int, default=8)
+    parser.add_argument('--batch_size', type=int, default=2)
+    parser.add_argument('--batch_size_time_sample', type=int, default=1)
     # 模型
     parser.add_argument("--model", type=str, default='STNet_nobn', help='Within [STResNet, STNet, STNet_nobn]')
     # 学习率
@@ -94,13 +94,13 @@ def params():
     parser.add_argument("--space_score_weight", type=float, default=1.0, help="0不使用，1使用时序评分")
     parser.add_argument("--node_domain_adapt", type=str, default="MMD", help="在MMD和adversarial选择")
     parser.add_argument("--fine_tuning_lr", type=float, default=8e-4, help="微调时的学习率")
-    parser.add_argument("--need_third", type=int, default=1, help="为1使用三个城市")
+    parser.add_argument("--need_third", type=int, default=0, help="为1使用三个城市")
     parser.add_argument("--alin_month", type=int, default=0, help="为1将三个城市月份统一")
     parser.add_argument("--node_adapt", type=str, default="MMD", help="[MMD, DT]")
     parser.add_argument("--pretrain", type=str, default="supervise", help="[supervise, meta]")
     parser.add_argument("--tasks_val_rate", type=float, default=0.3)
     parser.add_argument("--tasks_test_rate", type=float, default=0.5)
-    parser.add_argument("--need_weight", type=int, default=0)
+    parser.add_argument("--need_weight", type=int, default=1)
     parser.add_argument("--cut_data", type=int, default=3312)
     parser.add_argument("--mae_rate", type=float, default=1)
     parser.add_argument("--rmse_rate", type=float, default=1)

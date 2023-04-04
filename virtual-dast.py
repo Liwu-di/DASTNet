@@ -1092,7 +1092,7 @@ def model_train(args, model, optimizer, train_dataloader, val_dataloader, test_d
 
     while epoch <= args.epoch:
         if type == 'pretrain' and args.need_weight == 1:
-            if epoch == 0:
+            if epoch == 1:
                 source_weights_ma = torch.ones_like(source_weights, device=device, requires_grad=False)
             source_weights = get_weight(model, type)
             source_weights_ma = cross_ma_param * source_weights_ma + (1 - cross_ma_param) * source_weights
