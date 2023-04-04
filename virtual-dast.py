@@ -947,6 +947,8 @@ def select_mask(a):
         return th_maskchi
     elif a == 460:
         return th_maskny
+    else:
+        return mask_virtual
 
 
 def train(dur, model, optimizer, total_step, start_step, need_road, train_dataloader,val_dataloader, testdl, type, weight):
