@@ -1248,7 +1248,7 @@ print(
     f'Successfully load embeddings, 4: {vec_pems04.shape}, 7: {vec_pems07.shape}, 8: {vec_pems08.shape}, vec_virtual:{vec_virtual.shape}')
 
 domain_criterion = torch.nn.NLLLoss()
-domain_classifier = Domain_classifier_DG(num_class=2, encode_dim=args.enc_dim)
+domain_classifier = Domain_classifier_DG(num_class=3, encode_dim=args.enc_dim)
 
 domain_classifier = domain_classifier.to(device)
 state = g = None, None
