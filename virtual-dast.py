@@ -988,22 +988,25 @@ def train(dur, model, optimizer, total_step, start_step, need_road, train_datalo
 
             if type == 'pretrain':
                 pems04_pred = domain_classifier(shared_pems04_feat, constant, Reverse)
+                pems07_pred = domain_classifier(shared_pems07_feat, constant, Reverse)
                 pems08_pred = domain_classifier(shared_pems08_feat, constant, Reverse)
 
                 pems04_label = 0 * torch.ones(pems04_pred.shape[0]).long().to(device)
-                pems08_label = 1 * torch.ones(pems08_pred.shape[0]).long().to(device)
+                pems07_label = 1 * torch.ones(pems07_pred.shape[0]).long().to(device)
+                pems08_label = 2 * torch.ones(pems08_pred.shape[0]).long().to(device)
 
                 pems04_pred_label = pems04_pred.max(1, keepdim=True)[1]
                 pems04_correct = pems04_pred_label.eq(pems04_label.view_as(pems04_pred_label)).sum()
-
+                pems07_pred_label = pems07_pred.max(1, keepdim=True)[1]
+                pems07_correct = pems07_pred_label.eq(pems07_label.view_as(pems07_pred_label)).sum()
                 pems08_pred_label = pems08_pred.max(1, keepdim=True)[1]
                 pems08_correct = pems08_pred_label.eq(pems08_label.view_as(pems08_pred_label)).sum()
 
                 pems04_loss = domain_criterion(pems04_pred, pems04_label)
-
+                pems07_loss = domain_criterion(pems07_pred, pems07_label)
                 pems08_loss = domain_criterion(pems08_pred, pems08_label)
 
-                domain_loss = pems04_loss + pems08_loss
+                domain_loss = pems04_loss + pems07_loss + pems08_loss
 
         if type == 'pretrain':
             train_correct = pems04_correct + pems08_correct
