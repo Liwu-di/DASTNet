@@ -1705,7 +1705,7 @@ class DASTNets(nn.Module):
                                                                )
                 # pred = self.pems04_linear(pred)
                 pred = functional_linear(params["pems04_linear.weight"], params["pems04_linear.bias"], pred)
-                pred = pred.reshape((self.batch_size, self.pems04_adj.shape[0], -1))
+                pred = pred.reshape((self.batch_size, self.adj_vc.shape[0], -1))
             elif data_set == '4' or data_set == 'ny':
                 shared_pems04_feat = self.shared_pems04_featExtractor.functional_forward(vec_pems04, self.pems04_adj,
                                                                                          params[
