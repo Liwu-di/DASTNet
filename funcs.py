@@ -317,7 +317,7 @@ def load_process_data(args, p_bar):
     os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu)
     gpu_available = torch.cuda.is_available()
     if gpu_available:
-        device = torch.device('cuda:0')
+        device = torch.device('cuda:{}'.format(args.gpu))
     else:
         device = torch.device('cpu')
     dataname = args.dataname
