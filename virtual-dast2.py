@@ -1305,7 +1305,7 @@ local_path_generate("/".join(b), create_folder_only=True)
 class DASTNets(nn.Module):
     def __init__(self, input_dim, hidden_dim, encode_dim, device, batch_size, etype, pre_len, dataset, ft_dataset,
                  adj_pems04, adj_pems07, adj_pems08, adj_vc, vec_vc, vc_node):
-        super(DASTNet, self).__init__()
+        super(DASTNets, self).__init__()
         self.dataset = dataset
         self.finetune_dataset = ft_dataset
         self.pems04_adj = adj_pems04
