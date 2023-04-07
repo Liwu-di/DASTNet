@@ -297,6 +297,8 @@ if args.need_third == 1:
     boxes3, linked_regions_range3 = calculate_linked_regions(s3_time_weight, False, args.s3_rate)
 log(boxes1, boxes2, boxes3)
 log(linked_regions_range1, linked_regions_range2, linked_regions_range3)
+log([sum(j[4] for j in i) for i in [linked_regions_range1, linked_regions_range2, linked_regions_range3]])
+
 
 from ph import phspprg, phsppog
 from visualize import visualize
@@ -1006,7 +1008,7 @@ def train(dur, model, optimizer, total_step, start_step, need_road, train_datalo
                 pems07_loss = domain_criterion(pems07_pred, pems07_label)
                 pems08_loss = domain_criterion(pems08_pred, pems08_label)
 
-                domain_loss = pems04_loss + pems07_loss + pems08_loss
+                domain_loss = pems04_loss + pems08_loss
 
         if type == 'pretrain':
             train_correct = pems04_correct + pems08_correct
