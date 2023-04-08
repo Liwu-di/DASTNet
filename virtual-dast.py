@@ -1151,16 +1151,15 @@ if args.labelrate > 100:
 
 adj_pems04, adj_pems07, adj_pems08 = load_all_adj(device)
 vec_pems04 = vec_pems07 = vec_pems08 = None, None, None
-# virtual_road = np.where(virtual_road >= 1, 1, virtual_road)
-virtual_road = min_max_normalize(virtual_road)[0]
+virtual_road = np.where(virtual_road >= 1, 1, virtual_road)
 virtual_road = add_self_loop(virtual_road)
-# for m in range(virtual_road.shape[0]):
-#     for n in range(virtual_road.shape[1]):
-#         a, b = idx_1d22d(m, virtual_road.shape)
-#         c, d = idx_1d22d(n, virtual_road.shape)
-#         dis = abs(a - c) + abs(b - d)
-#         if virtual_road[m][n] - 0 > 1e-6 and dis != 0:
-#             virtual_road[m][n] = virtual_road[m][n] / dis
+for m in range(virtual_road.shape[0]):
+    for n in range(virtual_road.shape[1]):
+        a, b = idx_1d22d(m, virtual_road.shape)
+        c, d = idx_1d22d(n, virtual_road.shape)
+        dis = abs(a - c) + abs(b - d)
+        if virtual_road[m][n] - 0 > 1e-6 and dis != 0:
+            virtual_road[m][n] = virtual_road[m][n] / dis
 adj_virtual = torch.tensor(virtual_road).to(device)
 dc = np.load("./data/DC/{}DC_{}.npy".format(args.dataname, args.datatype))
 dcmask = dc.sum(0) > 0
