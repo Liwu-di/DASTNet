@@ -1151,7 +1151,8 @@ if args.labelrate > 100:
 
 adj_pems04, adj_pems07, adj_pems08 = load_all_adj(device)
 vec_pems04 = vec_pems07 = vec_pems08 = None, None, None
-virtual_road = np.where(virtual_road >= 1, 1, virtual_road)
+# virtual_road = np.where(virtual_road >= 1, 1, virtual_road)
+virtual_road = min_max_normalize(virtual_road)[0]
 virtual_road = add_self_loop(virtual_road)
 for m in range(virtual_road.shape[0]):
     for n in range(virtual_road.shape[1]):
