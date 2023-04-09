@@ -498,3 +498,18 @@ def masked_loss2(y_pred, y_true):
 
     return mae_loss.mean(), torch.sqrt(mse_loss.mean()), mape_loss.mean()
 
+
+
+
+def get_target_loader(args):
+
+    train_X, train_Y, val_X, val_Y, test_X, test_Y, max_speed, scaler = load_graphdata_channel1(args, "", False,
+                                                                                                None,
+                                                                                                visualize=False)
+    print([i.shape for i in [train_X, train_Y, val_X, val_Y, test_X, test_Y]])
+    ttld = MyDataLoader(torch.FloatTensor(train_X), torch.FloatTensor(train_Y),
+                                    batch_size=args.batch_size)
+    tvld = MyDataLoader(torch.FloatTensor(val_X), torch.FloatTensor(val_Y), batch_size=args.batch_size)
+    ttestld = MyDataLoader(torch.FloatTensor(test_X), torch.FloatTensor(test_Y), batch_size=args.batch_size)
+
+    return ttld, tvld, ttestld

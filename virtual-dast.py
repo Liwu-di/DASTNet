@@ -37,7 +37,7 @@ import numpy as np
 import torch.optim as optim
 
 from utils.data import MyDataLoader
-from utils.funcs import load_data, load_all_adj, StandardScaler
+from utils.funcs import load_data, load_all_adj, StandardScaler, get_target_loader
 from utils.funcs import masked_loss
 from utils.vec import generate_vector
 from model import DASTNet, Domain_classifier_DG
@@ -1300,6 +1300,7 @@ local_path_generate("/".join(b), create_folder_only=True)
 vec_pems04 = vec_virtual
 adj_pems04 = adj_virtual
 args.dataset = "8"
+tar_train_for_meta_loader = get_target_loader(args)
 if os.path.exists(pretrain_model_path):
     print(f'Loading pretrained model at {pretrain_model_path}')
     state = torch.load(pretrain_model_path, map_location='cpu')
@@ -1472,7 +1473,7 @@ else:
             model.load_state_dict(state['model'])
             optimizer.load_state_dict(state['optim'])
 
-        state = model_train(args, model, optimizer, train_dataloader, val_dataloader, test_dataloader, type)
+        state = model_train(args, model, optimizer, train_dataloader, tar_train_for_meta_loader[1], tar_train_for_meta_loader[2], type)
 
     print(f'Saving model to {pretrain_model_path} ...')
     torch.save(state, pretrain_model_path)
