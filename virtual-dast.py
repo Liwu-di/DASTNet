@@ -299,7 +299,6 @@ log(boxes1, boxes2, boxes3)
 log(linked_regions_range1, linked_regions_range2, linked_regions_range3)
 log([sum(j[4] for j in i) for i in [linked_regions_range1, linked_regions_range2, linked_regions_range3]])
 
-
 from ph import phspprg, phsppog
 from visualize import visualize
 from collections import namedtuple
@@ -458,7 +457,7 @@ th_mask_virtual = torch.Tensor(mask_virtual.reshape(1, lng_virtual, lat_virtual)
 log("%d valid regions in virtual" % np.sum(mask_virtual))
 virtual_emb_label = masked_percentile_label(virtual_city.sum(0).reshape(-1), mask_virtual.reshape(-1))
 lag = [-6, -5, -4, -3, -2, -1]
-#virtual_city, virtual_max, virtual_min = min_max_normalize(virtual_city)
+# virtual_city, virtual_max, virtual_min = min_max_normalize(virtual_city)
 virtual_train_x, virtual_train_y, virtual_val_x, virtual_val_y, virtual_test_x, virtual_test_y \
     = split_x_y(virtual_city, lag, val_num=int(virtual_city.shape[0] / 6), test_num=int(virtual_city.shape[0] / 6))
 # we concatenate all source data
@@ -545,7 +544,8 @@ cross_num_heads = 2
 cross_mmd_w = args.mmd_w
 cross_et_w = args.et_w
 cross_ma_param = args.ma_coef
-mvgat = MVGAT(len(source_graphs), cross_num_gat_layers, cross_in_dim, cross_hidden_dim, cross_emb_dim, cross_num_heads, True).to(device)
+mvgat = MVGAT(len(source_graphs), cross_num_gat_layers, cross_in_dim, cross_hidden_dim, cross_emb_dim, cross_num_heads,
+              True).to(device)
 fusion = FusionModule(len(source_graphs), cross_emb_dim, 0.8).to(device)
 scoring = Scoring(cross_emb_dim, th_mask_virtual, th_mask_target).to(device)
 edge_disc = EdgeTypeDiscriminator(len(source_graphs), cross_emb_dim).to(device)
@@ -561,6 +561,7 @@ best_test_rmse = 999
 best_test_mae = 999
 best_test_mape = 999
 p_bar.process(5, 1, 5)
+
 
 class DomainClassify(nn.Module):
     def __init__(self, emb_dim):
@@ -607,6 +608,7 @@ def forward_emb(graphs_, in_feat_, od_adj_, poi_cos_):
     loss = -loss_s - loss_d + loss_poi
 
     return loss, fused_emb, embs
+
 
 if args.node_adapt == "DT":
     # ============================================================================================
@@ -829,12 +831,14 @@ log()
 
 
 def net_fix(source, y, weight, mask, fast_weights, bn_vars, net):
-    pred_source = net.functional_forward(vec_pems04, vec_pems07, vec_pems08, source, True, fast_weights, bn_vars, bn_training=True, data_set="4")
+    pred_source = net.functional_forward(vec_pems04, vec_pems07, vec_pems08, source, True, fast_weights, bn_vars,
+                                         bn_training=True, data_set="4")
     label = y.reshape((pred_source.shape[0], -1, pred_source.shape[2]))
     mask = mask.reshape((1, mask.shape[1] * mask.shape[2], 1))
-    fast_loss = torch.abs(pred_source - label)[:, mask.view(-1).bool(),:]
+    fast_loss = torch.abs(pred_source - label)[:, mask.view(-1).bool(), :]
     fast_loss = (fast_loss * weight.view((1, -1, 1))).mean(0).sum()
-    a = [(i, torch.autograd.grad(fast_loss, fast_weights[i], create_graph=True, allow_unused=True)) for i in fast_weights.keys()]
+    a = [(i, torch.autograd.grad(fast_loss, fast_weights[i], create_graph=True, allow_unused=True)) for i in
+         fast_weights.keys()]
     grads = {}
     used_fast_weight = OrderedDict()
     for i in a:
@@ -861,7 +865,8 @@ def meta_train_epoch(s_embs, t_embs, net):
             s_y1 = s_y1.reshape((s_y1.shape[0], s_y1.shape[1], s_y1.shape[2] * s_y1.shape[3]))
             s_x1 = s_x1.to(device)
             s_y1 = s_y1.to(device)
-            fast_loss, fast_weights, bn_vars = net_fix(s_x1, s_y1, source_weights, th_mask_virtual, fast_weights, bn_vars, net)
+            fast_loss, fast_weights, bn_vars = net_fix(s_x1, s_y1, source_weights, th_mask_virtual, fast_weights,
+                                                       bn_vars, net)
             fast_losses.append(fast_loss.item())
 
         for meta_it in range(args.tinneriter):
@@ -871,13 +876,15 @@ def meta_train_epoch(s_embs, t_embs, net):
 
             t_x = t_x.to(device)
             t_y = t_y.to(device)
-            pred_source = net.functional_forward(vec_pems04, vec_pems07, vec_pems08, t_x, True, fast_weights, bn_vars, bn_training=True, data_set="8")
+            pred_source = net.functional_forward(vec_pems04, vec_pems07, vec_pems08, t_x, True, fast_weights, bn_vars,
+                                                 bn_training=True, data_set="8")
             label = t_y.reshape((pred_source.shape[0], -1, pred_source.shape[2]))
             mask = th_mask_target
             mask = mask.reshape((1, mask.shape[1] * mask.shape[2], 1))
-            fast_loss = torch.abs(pred_source - label)[:, mask.view(-1).bool(),:]
+            fast_loss = torch.abs(pred_source - label)[:, mask.view(-1).bool(), :]
             fast_loss = fast_loss.mean(0).sum()
-            a = [(i, torch.autograd.grad(fast_loss, fast_weights[i], create_graph=True, allow_unused=True)) for i in fast_weights.keys()]
+            a = [(i, torch.autograd.grad(fast_loss, fast_weights[i], create_graph=True, allow_unused=True)) for i in
+                 fast_weights.keys()]
             grads = {}
             used_fast_weight = OrderedDict()
             for i in a:
@@ -903,10 +910,11 @@ def meta_train_epoch(s_embs, t_embs, net):
 
             x_q = x_q.to(device)
             y_q = y_q.to(device)
-            pred_source = net.functional_forward(vec_pems04, vec_pems07, vec_pems08, x_q, True, fast_weights, bn_vars, bn_training=True, data_set="8")
+            pred_source = net.functional_forward(vec_pems04, vec_pems07, vec_pems08, x_q, True, fast_weights, bn_vars,
+                                                 bn_training=True, data_set="8")
             label = y_q.reshape((pred_source.shape[0], -1, pred_source.shape[2]))
             mask = temp_mask.reshape((1, temp_mask.shape[1] * temp_mask.shape[2], 1))
-            fast_loss = torch.abs(pred_source - label)[:, mask.view(-1).bool(),:]
+            fast_loss = torch.abs(pred_source - label)[:, mask.view(-1).bool(), :]
             fast_loss = fast_loss.mean(0).sum()
 
             q_losses.append(fast_loss)
@@ -953,7 +961,8 @@ def select_mask(a):
         return mask_virtual
 
 
-def train(dur, model, optimizer, total_step, start_step, need_road, train_dataloader,val_dataloader, testdl, type, weight):
+def train(dur, model, optimizer, total_step, start_step, need_road, train_dataloader, val_dataloader, testdl, type,
+          weight):
     t0 = time.time()
     train_mae, val_mae, train_rmse, val_rmse, train_acc = list(), list(), list(), list(), list()
     train_correct = 0
@@ -1114,7 +1123,11 @@ def model_train(args, model, optimizer, train_dataloader, val_dataloader, test_d
                                                                                                     total_step,
                                                                                                     start_step,
                                                                                                     args.need_road,
-                                                                                                    train_dataloader, val_dataloader, test_dataloader, type, source_weights_ma)
+                                                                                                    train_dataloader,
+                                                                                                    val_dataloader,
+                                                                                                    test_dataloader,
+                                                                                                    type,
+                                                                                                    source_weights_ma)
         log(f'Epoch {epoch} | acc_train: {train_acc: .4f} | mae_train: {mae_train: .4f} | rmse_train: {rmse_train: .4f} | mae_val: {mae_val: .4f} | rmse_val: {rmse_val: .4f} | mae_test: {mae_test: .4f} | rmse_test: {rmse_test: .4f} | mape_test: {mape_test: .4f} | Time(s) {dur[-1]: .4f}')
         epoch += 1
         acc.append(train_acc)
@@ -1180,11 +1193,12 @@ pems07_emb_path = os.path.join('{}'.format(cur_dir), 'embeddings', 'node2vec', '
                                '{}_vecdim.pkl'.format(args.vec_dim))
 pems08_emb_path = os.path.join('{}'.format(cur_dir), 'embeddings', 'node2vec', 'pems08',
                                '{}_vecdim.pkl'.format(args.vec_dim))
-v_p = os.path.join('{}'.format(cur_dir), 'embeddings', 'node2vec', 'pems08',
-                               '{}{}{}{}{}{}_vecdim.pkl'.format(args.vec_dim, args.dataname, args.datatype,
-                                       str(args.s1_rate).replace(".", ""),
-                                       str(args.s2_rate).replace(".", ""),
-                                       str(args.s3_rate).replace(".", "")))
+v_p = os.path.join('{}'.format(cur_dir), 'embeddings', 'node2vec', 'vc',
+                   '{}{}{}{}{}{}{}_vecdim.pkl'.format(args.vec_dim, args.dataname, args.datatype,
+                                                      str(args.s1_rate).replace(".", ""),
+                                                      str(args.s2_rate).replace(".", ""),
+                                                      str(args.s3_rate).replace(".", ""),
+                                                      get_timestamp(split="-")))
 
 for i in [pems04_emb_path, pems07_emb_path, pems08_emb_path, v_p]:
     a = i.split("/")
@@ -1232,7 +1246,6 @@ else:
     print(f'Saving pems08 embedding...')
     torch.save(vec_pems08.cpu(), pems08_emb_path)
 
-
 if os.path.exists(v_p):
     print(f'Loading v embedding...')
     vec_virtual = torch.load(v_p, map_location='cpu')
@@ -1244,7 +1257,6 @@ else:
     vec_virtual = vec_virtual.to(device)
     print(f'Saving virtual embedding...')
     torch.save(vec_virtual.cpu(), v_p)
-
 
 print(
     f'Successfully load embeddings, 4: {vec_pems04.shape}, 7: {vec_pems07.shape}, 8: {vec_pems08.shape}, vec_virtual:{vec_virtual.shape}')
@@ -1440,7 +1452,8 @@ else:
 
 
         train_dataloader, val_dataloader, test_dataloader, adj, max_speed, scaler = load_data(args)
-        train_X, train_Y, val_X, val_Y, test_X, test_Y, max_speed, scaler = load_graphdata_channel3(args, "", False, scaler,
+        train_X, train_Y, val_X, val_Y, test_X, test_Y, max_speed, scaler = load_graphdata_channel3(args, "", False,
+                                                                                                    scaler,
                                                                                                     visualize=False)
         print([i.shape for i in [train_X, train_Y, val_X, val_Y, test_X, test_Y]])
         train_dataloader = MyDataLoader(torch.FloatTensor(train_X), torch.FloatTensor(train_Y),
