@@ -970,7 +970,8 @@ def train(dur, model, optimizer, total_step, start_step, need_road, train_datalo
     model.train()
     if type == 'pretrain':
         domain_classifier.train()
-    model.dataset = "4"
+        model.dataset = "4"
+
     for i, (feat, label) in enumerate(train_dataloader.get_iterator()):
         mask = select_mask(feat.shape[2])
         Reverse = False
