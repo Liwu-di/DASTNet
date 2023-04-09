@@ -289,8 +289,8 @@ class DASTNet(nn.Module):
         self.combine_pems07_linear = nn.Linear(hidden_dim, hidden_dim, )
         self.combine_pems08_linear = nn.Linear(hidden_dim, hidden_dim, )
 
-    def forward(self, vec_pems04, vec_pems07, vec_pems08, feat, eval, need_road=True):
-        if self.dataset != self.finetune_dataset:
+    def forward(self, vec_pems04, vec_pems07, vec_pems08, feat, eval, need_road=True, flag=True):
+        if self.dataset != self.finetune_dataset or flag == False:
             if not eval:
                 shared_pems04_feat = self.shared_pems04_featExtractor(vec_pems04, self.pems04_adj).to(self.device)
                 shared_pems07_feat = self.shared_pems07_featExtractor(vec_pems07, self.pems07_adj).to(self.device)
