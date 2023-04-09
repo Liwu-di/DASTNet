@@ -970,7 +970,7 @@ def train(dur, model, optimizer, total_step, start_step, need_road, train_datalo
     model.train()
     if type == 'pretrain':
         domain_classifier.train()
-
+    args.dataset = "4"
     for i, (feat, label) in enumerate(train_dataloader.get_iterator()):
         mask = select_mask(feat.shape[2])
         Reverse = False
@@ -1044,7 +1044,7 @@ def train(dur, model, optimizer, total_step, start_step, need_road, train_datalo
     if type == 'pretrain':
         domain_classifier.eval()
     model.eval()
-
+    args.dataset = "8"
     for i, (feat, label) in enumerate(val_dataloader.get_iterator()):
         mask = select_mask(feat.shape[2])
         feat = torch.FloatTensor(feat).to(device)
@@ -1484,7 +1484,7 @@ else:
 
 type = 'fine-tune'
 args.epoch = args.fine_epoch
-
+args.dataset = "8"
 print(f'\n\n*******************************************************************************************')
 print(
     f'dataset: {args.dataset}, model: {args.models}, pre_len: {args.pre_len}, labelrate: {args.labelrate}, seed: {args.division_seed}')
