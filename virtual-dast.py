@@ -906,8 +906,8 @@ def net_fix(source, y, weight, mask, fast_weights, bn_vars, net, epoch):
     pems08_pred_label = pems08_pred.max(1, keepdim=True)[1]
     pems08_correct = pems08_pred_label.eq(pems08_label.view_as(pems08_pred_label)).sum()
     mmmm = (th_mask_virtual.reshape((-1)))
-    pems04_pred = torch.mul(pems04_pred[mmmm, :], weight.repeat((1, 3)))
-    pems04_label = torch.mul(pems04_label[mmmm, :], weight.repeat((1, 3)))
+    pems04_pred = torch.mul(pems04_pred[mmmm.bool(), :], weight.repeat((1, 3)))
+    pems04_label = torch.mul(pems04_label[mmmm.bool(), :], weight.repeat((1, 3)))
     pems04_loss = domain_criterion(pems04_pred, pems04_label)
     pems07_loss = domain_criterion(pems07_pred, pems07_label)
     pems08_loss = domain_criterion(pems08_pred, pems08_label)
