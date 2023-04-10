@@ -899,7 +899,7 @@ def net_fix(source, y, weight, mask, fast_weights, bn_vars, net):
     return fast_loss, fast_weights, bn_vars
 
 
-def meta_train_epoch(s_embs, t_embs, net):
+def meta_train_epoch(s_embs, t_embs, net, epoch):
     meta_query_losses = []
     for meta_ep in range(args.outeriter):
         fast_losses = []
@@ -932,7 +932,31 @@ def meta_train_epoch(s_embs, t_embs, net):
                                                                                                       bn_vars,
                                                                                                       bn_training=True,
                                                                                                       data_set="8")
-            log([i.shape for i in [shared_pems04_feat, shared_pems07_feat, shared_pems08_feat]])
+
+            Reverse = True
+            p = float(epoch) / args.epoch
+            constant = 2. / (1. + np.exp(-10 * p)) - 1
+            pems04_pred = domain_classifier(shared_pems04_feat, constant, Reverse)
+            pems07_pred = domain_classifier(shared_pems07_feat, constant, Reverse)
+            pems08_pred = domain_classifier(shared_pems08_feat, constant, Reverse)
+
+            pems04_label = 0 * torch.ones(pems04_pred.shape[0]).long().to(device)
+            pems07_label = 1 * torch.ones(pems07_pred.shape[0]).long().to(device)
+            pems08_label = 2 * torch.ones(pems08_pred.shape[0]).long().to(device)
+
+            pems04_pred_label = pems04_pred.max(1, keepdim=True)[1]
+            pems04_correct = pems04_pred_label.eq(pems04_label.view_as(pems04_pred_label)).sum()
+            pems07_pred_label = pems07_pred.max(1, keepdim=True)[1]
+            pems07_correct = pems07_pred_label.eq(pems07_label.view_as(pems07_pred_label)).sum()
+            pems08_pred_label = pems08_pred.max(1, keepdim=True)[1]
+            pems08_correct = pems08_pred_label.eq(pems08_label.view_as(pems08_pred_label)).sum()
+
+            pems04_loss = domain_criterion(pems04_pred, pems04_label)
+            pems07_loss = domain_criterion(pems07_pred, pems07_label)
+            pems08_loss = domain_criterion(pems08_pred, pems08_label)
+
+            domain_loss = pems04_loss + pems08_loss
+            log([i.shape for i in [shared_pems04_feat, shared_pems07_feat, shared_pems08_feat, pems04_pred, pems04_loss]])
             label = t_y.reshape((pred_source.shape[0], -1, pred_source.shape[2]))
             mask = th_mask_target
             mask = mask.reshape((1, mask.shape[1] * mask.shape[2], 1))
@@ -984,7 +1008,7 @@ def meta_train_epoch(s_embs, t_embs, net):
     return np.mean(meta_query_losses)
 
 
-def get_weight(net, type):
+def get_weight(net, type, epoch):
     if type == "fine-tune":
         return None
     for emb_ep in range(5):
@@ -999,7 +1023,7 @@ def get_weight(net, type):
         views = mvgat(target_graphs, torch.Tensor(target_norm_poi).to(device))
         fused_emb_t, _ = fusion(views)
 
-    meta_train_epoch(fused_emb_s, fused_emb_t, net)
+    meta_train_epoch(fused_emb_s, fused_emb_t, net, epoch)
     with torch.no_grad():
         source_weights = scoring(fused_emb_s, fused_emb_t, th_mask_virtual, th_mask_target)
     return source_weights
@@ -1164,7 +1188,7 @@ def model_train(args, model, optimizer, train_dataloader, val_dataloader, test_d
 
     while epoch <= args.epoch:
         if type == 'pretrain' and args.need_weight == 1:
-            source_weights = get_weight(model, type)
+            source_weights = get_weight(model, type, epoch)
             if epoch == 1:
                 source_weights_ma = torch.ones_like(source_weights, device=device, requires_grad=False)
             source_weights_ma = cross_ma_param * source_weights_ma + (1 - cross_ma_param) * source_weights
