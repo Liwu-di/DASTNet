@@ -100,14 +100,15 @@ def train(dur, model, optimizer, total_step, start_step):
         if args.model not in ['DCRNN', 'STGCN', 'HA']:
             if type == 'pretrain':
                 pred, shared_pems04_feat, shared_pems07_feat, shared_pems08_feat = model(vec_pems04, vec_pems07,
-                                                                                         vec_pems08, feat, False)
+                                                                                         vec_pems08, feat, False,
+                                                                                         need_road=args.need_road)
             elif type == 'fine-tune':
                 pred = model(vec_pems04, vec_pems07, vec_pems08, feat, False)
 
             pred = pred.transpose(1, 2).reshape((-1, feat.size(2)))
             label = label.reshape((-1, label.size(2)))
 
-            if type == 'pretrain':
+            if type == 'pretrain' and args.need_road:
                 pems04_pred = domain_classifier(shared_pems04_feat, constant, Reverse)
                 pems08_pred = domain_classifier(shared_pems08_feat, constant, Reverse)
 
@@ -131,8 +132,10 @@ def train(dur, model, optimizer, total_step, start_step):
         mae_train, rmse_train, mape_train = masked_loss(scaler.inverse_transform(pred), scaler.inverse_transform(label),
                                                         maskp=mask)
 
-        if type == 'pretrain':
+        if type == 'pretrain' and args.need_road:
             loss = mae_train + args.beta * (args.theta * domain_loss)
+        elif type == 'pretrain':
+            loss = mae_train
         elif type == 'fine-tune':
             loss = mae_train
 
