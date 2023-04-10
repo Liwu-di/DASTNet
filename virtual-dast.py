@@ -878,13 +878,46 @@ log("[%.2fs]Pretraining embedding, source cvscore %.4f, target cvscore %.4f" % \
 log()
 
 
-def net_fix(source, y, weight, mask, fast_weights, bn_vars, net):
-    pred_source = net.functional_forward(vec_pems04, vec_pems07, vec_pems08, source, True, fast_weights, bn_vars,
-                                         bn_training=True, data_set="4")
+def net_fix(source, y, weight, mask, fast_weights, bn_vars, net, epoch):
+    pred_source, shared_pems04_feat, shared_pems07_feat, shared_pems08_feat = net.functional_forward(vec_pems04,
+                                                                                                     vec_pems07,
+                                                                                                     vec_pems08,
+                                                                                                     source,
+                                                                                                     False,
+                                                                                                     fast_weights,
+                                                                                                     bn_vars,
+                                                                                                     bn_training=True,
+                                                                                                     data_set="4")
+    Reverse = True
+    p = float(epoch) / args.epoch
+    constant = 2. / (1. + np.exp(-10 * p)) - 1
+    pems04_pred = domain_classifier(shared_pems04_feat, constant, Reverse)
+    pems07_pred = domain_classifier(shared_pems07_feat, constant, Reverse)
+    pems08_pred = domain_classifier(shared_pems08_feat, constant, Reverse)
+
+    pems04_label = 0 * torch.ones(pems04_pred.shape[0]).long().to(device)
+    pems07_label = 1 * torch.ones(pems07_pred.shape[0]).long().to(device)
+    pems08_label = 2 * torch.ones(pems08_pred.shape[0]).long().to(device)
+
+    pems04_pred_label = pems04_pred.max(1, keepdim=True)[1]
+    pems04_correct = pems04_pred_label.eq(pems04_label.view_as(pems04_pred_label)).sum()
+    pems07_pred_label = pems07_pred.max(1, keepdim=True)[1]
+    pems07_correct = pems07_pred_label.eq(pems07_label.view_as(pems07_pred_label)).sum()
+    pems08_pred_label = pems08_pred.max(1, keepdim=True)[1]
+    pems08_correct = pems08_pred_label.eq(pems08_label.view_as(pems08_pred_label)).sum()
+    mmmm = (th_mask_virtual.reshape((-1)))
+    pems04_pred = torch.mul(pems04_pred[mmmm, :], weight.repeat((1, 3)))
+    pems04_label = torch.mul(pems04_label[mmmm, :], weight.repeat((1, 3)))
+    pems04_loss = domain_criterion(pems04_pred, pems04_label)
+    pems07_loss = domain_criterion(pems07_pred, pems07_label)
+    pems08_loss = domain_criterion(pems08_pred, pems08_label)
+
+    domain_loss = pems04_loss + pems08_loss
     label = y.reshape((pred_source.shape[0], -1, pred_source.shape[2]))
     mask = mask.reshape((1, mask.shape[1] * mask.shape[2], 1))
     fast_loss = torch.abs(pred_source - label)[:, mask.view(-1).bool(), :]
     fast_loss = (fast_loss * weight.view((1, -1, 1))).mean(0).sum()
+    fast_loss = fast_loss + args.beta * (args.theta * domain_loss)
     a = [(i, torch.autograd.grad(fast_loss, fast_weights[i], create_graph=True, allow_unused=True)) for i in
          fast_weights.keys()]
     grads = {}
@@ -914,7 +947,7 @@ def meta_train_epoch(s_embs, t_embs, net, epoch):
             s_x1 = s_x1.to(device)
             s_y1 = s_y1.to(device)
             fast_loss, fast_weights, bn_vars = net_fix(s_x1, s_y1, source_weights, th_mask_virtual, fast_weights,
-                                                       bn_vars, net)
+                                                       bn_vars, net, epoch)
             fast_losses.append(fast_loss.item())
 
         for meta_it in range(args.tinneriter):
@@ -925,13 +958,14 @@ def meta_train_epoch(s_embs, t_embs, net, epoch):
             t_x = t_x.to(device)
             t_y = t_y.to(device)
             pred_source, shared_pems04_feat, shared_pems07_feat, shared_pems08_feat = net.functional_forward(vec_pems04,
-                                                                                                      vec_pems07,
-                                                                                                      vec_pems08, t_x,
-                                                                                                      False,
-                                                                                                      fast_weights,
-                                                                                                      bn_vars,
-                                                                                                      bn_training=True,
-                                                                                                      data_set="8")
+                                                                                                             vec_pems07,
+                                                                                                             vec_pems08,
+                                                                                                             t_x,
+                                                                                                             False,
+                                                                                                             fast_weights,
+                                                                                                             bn_vars,
+                                                                                                             bn_training=True,
+                                                                                                             data_set="8")
 
             Reverse = True
             p = float(epoch) / args.epoch
@@ -950,18 +984,17 @@ def meta_train_epoch(s_embs, t_embs, net, epoch):
             pems07_correct = pems07_pred_label.eq(pems07_label.view_as(pems07_pred_label)).sum()
             pems08_pred_label = pems08_pred.max(1, keepdim=True)[1]
             pems08_correct = pems08_pred_label.eq(pems08_label.view_as(pems08_pred_label)).sum()
-
             pems04_loss = domain_criterion(pems04_pred, pems04_label)
             pems07_loss = domain_criterion(pems07_pred, pems07_label)
             pems08_loss = domain_criterion(pems08_pred, pems08_label)
 
             domain_loss = pems04_loss + pems08_loss
-            log([i.shape for i in [shared_pems04_feat, shared_pems07_feat, shared_pems08_feat, pems04_pred, pems04_loss]])
             label = t_y.reshape((pred_source.shape[0], -1, pred_source.shape[2]))
             mask = th_mask_target
             mask = mask.reshape((1, mask.shape[1] * mask.shape[2], 1))
             fast_loss = torch.abs(pred_source - label)[:, mask.view(-1).bool(), :]
             fast_loss = fast_loss.mean(0).sum()
+            fast_loss = fast_loss + args.beta * (args.theta * domain_loss)
             a = [(i, torch.autograd.grad(fast_loss, fast_weights[i], create_graph=True, allow_unused=True)) for i in
                  fast_weights.keys()]
             grads = {}
@@ -989,13 +1022,42 @@ def meta_train_epoch(s_embs, t_embs, net, epoch):
 
             x_q = x_q.to(device)
             y_q = y_q.to(device)
-            pred_source = net.functional_forward(vec_pems04, vec_pems07, vec_pems08, x_q, True, fast_weights, bn_vars,
-                                                 bn_training=True, data_set="8")
+            pred_source, shared_pems04_feat, shared_pems07_feat, shared_pems08_feat = \
+                net.functional_forward(vec_pems04,
+                                       vec_pems07,
+                                       vec_pems08,
+                                       x_q, False,
+                                       fast_weights,
+                                       bn_vars,
+                                       bn_training=True,
+                                       data_set="8")
+            Reverse = True
+            p = float(epoch) / args.epoch
+            constant = 2. / (1. + np.exp(-10 * p)) - 1
+            pems04_pred = domain_classifier(shared_pems04_feat, constant, Reverse)
+            pems07_pred = domain_classifier(shared_pems07_feat, constant, Reverse)
+            pems08_pred = domain_classifier(shared_pems08_feat, constant, Reverse)
+
+            pems04_label = 0 * torch.ones(pems04_pred.shape[0]).long().to(device)
+            pems07_label = 1 * torch.ones(pems07_pred.shape[0]).long().to(device)
+            pems08_label = 2 * torch.ones(pems08_pred.shape[0]).long().to(device)
+
+            pems04_pred_label = pems04_pred.max(1, keepdim=True)[1]
+            pems04_correct = pems04_pred_label.eq(pems04_label.view_as(pems04_pred_label)).sum()
+            pems07_pred_label = pems07_pred.max(1, keepdim=True)[1]
+            pems07_correct = pems07_pred_label.eq(pems07_label.view_as(pems07_pred_label)).sum()
+            pems08_pred_label = pems08_pred.max(1, keepdim=True)[1]
+            pems08_correct = pems08_pred_label.eq(pems08_label.view_as(pems08_pred_label)).sum()
+            pems04_loss = domain_criterion(pems04_pred, pems04_label)
+            pems07_loss = domain_criterion(pems07_pred, pems07_label)
+            pems08_loss = domain_criterion(pems08_pred, pems08_label)
+
+            domain_loss = pems04_loss + pems08_loss
             label = y_q.reshape((pred_source.shape[0], -1, pred_source.shape[2]))
             mask = temp_mask.reshape((1, temp_mask.shape[1] * temp_mask.shape[2], 1))
             fast_loss = torch.abs(pred_source - label)[:, mask.view(-1).bool(), :]
             fast_loss = fast_loss.mean(0).sum()
-
+            fast_loss = fast_loss + args.beta * (args.theta * domain_loss)
             q_losses.append(fast_loss)
         q_loss = torch.stack(q_losses).mean()
         weights_mean = source_weights.mean()
