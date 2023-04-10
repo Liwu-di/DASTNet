@@ -108,7 +108,7 @@ def train(dur, model, optimizer, total_step, start_step):
             pred = pred.transpose(1, 2).reshape((-1, feat.size(2)))
             label = label.reshape((-1, label.size(2)))
 
-            if type == 'pretrain' and args.need_road:
+            if type == 'pretrain' and args.need_road == True:
                 log("========================")
                 log("=====use road info =====")
                 log("========================")
