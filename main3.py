@@ -146,8 +146,10 @@ def train(dur, model, optimizer, total_step, start_step):
         train_mae.append(mae_train.item())
         train_rmse.append(rmse_train.item())
 
-        if type == 'pretrain':
+        if type == 'pretrain' and args.need_road:
             train_acc.append(train_correct.item() / 855)
+        elif type == 'pretrain':
+            train_acc.append(0)
         elif type == 'fine-tune':
             train_acc.append(0)
 
