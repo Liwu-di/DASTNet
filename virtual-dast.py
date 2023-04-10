@@ -502,7 +502,7 @@ log("d_adj3, %d nodes, %d edges" % (virtual_d_adj.shape[0], np.sum(virtual_d_adj
 log()
 
 device = torch.device("cuda:" + str(args.device) if torch.cuda.is_available() else "cpu")
-print(f'device: {device}')
+log(f'device: {device}')
 torch.manual_seed(0)
 np.random.seed(0)
 
@@ -924,7 +924,7 @@ def meta_train_epoch(s_embs, t_embs, net):
 
             t_x = t_x.to(device)
             t_y = t_y.to(device)
-            pred, shared_pems04_feat, shared_pems07_feat, shared_pems08_feat = net.functional_forward(vec_pems04,
+            pred_source, shared_pems04_feat, shared_pems07_feat, shared_pems08_feat = net.functional_forward(vec_pems04,
                                                                                                       vec_pems07,
                                                                                                       vec_pems08, t_x,
                                                                                                       False,
@@ -1204,8 +1204,8 @@ def model_train(args, model, optimizer, train_dataloader, val_dataloader, test_d
             else:
                 cnt += 1
             if cnt == args.patience or epoch > args.epoch:
-                print(f'Stop!!')
-                print(f'Avg acc: {np.mean(acc)}')
+                log(f'Stop!!')
+                log(f'Avg acc: {np.mean(acc)}')
                 break
         else:
             if source_weights_ma.mean().cpu() <= best:
@@ -1217,10 +1217,10 @@ def model_train(args, model, optimizer, train_dataloader, val_dataloader, test_d
             else:
                 cnt += 1
             if cnt == args.patience or epoch > args.epoch:
-                print(f'Stop!!')
-                print(f'Avg acc: {np.mean(acc)}')
+                log(f'Stop!!')
+                log(f'Avg acc: {np.mean(acc)}')
                 break
-    print("Optimization Finished!")
+    log("Optimization Finished!")
     return state
 
 
@@ -1252,54 +1252,54 @@ for i in [pems04_emb_path, pems07_emb_path, pems08_emb_path, v_p]:
     local_path_generate(folder_name="/".join(b), create_folder_only=True)
 
 if os.path.exists(pems04_emb_path):
-    print(f'Loading pems04 embedding...')
+    log(f'Loading pems04 embedding...')
     vec_pems04 = torch.load(pems04_emb_path, map_location='cpu')
     vec_pems04 = vec_pems04.to(device)
 else:
-    print(f'Generating pems04 embedding...')
+    log(f'Generating pems04 embedding...')
     args.dataset = '4'
     vec_pems04, _ = generate_vector(adj_pems04.cpu().numpy(), args)
     vec_pems04 = vec_pems04.to(device)
-    print(f'Saving pems04 embedding...')
+    log(f'Saving pems04 embedding...')
     torch.save(vec_pems04.cpu(), pems04_emb_path)
 
 if os.path.exists(pems07_emb_path):
-    print(f'Loading pems07 embedding...')
+    log(f'Loading pems07 embedding...')
     vec_pems07 = torch.load(pems07_emb_path, map_location='cpu')
     vec_pems07 = vec_pems07.to(device)
 else:
-    print(f'Generating pems07 embedding...')
+    log(f'Generating pems07 embedding...')
     args.dataset = '7'
     vec_pems07, _ = generate_vector(adj_pems07.cpu().numpy(), args)
     vec_pems07 = vec_pems07.to(device)
-    print(f'Saving pems07 embedding...')
+    log(f'Saving pems07 embedding...')
     torch.save(vec_pems07.cpu(), pems07_emb_path)
 
 if os.path.exists(pems08_emb_path):
-    print(f'Loading pems08 embedding...')
+    log(f'Loading pems08 embedding...')
     vec_pems08 = torch.load(pems08_emb_path, map_location='cpu')
     vec_pems08 = vec_pems08.to(device)
 else:
-    print(f'Generating pems08 embedding...')
+    log(f'Generating pems08 embedding...')
     args.dataset = '8'
     vec_pems08, _ = generate_vector(adj_pems08.cpu().numpy(), args)
     vec_pems08 = vec_pems08.to(device)
-    print(f'Saving pems08 embedding...')
+    log(f'Saving pems08 embedding...')
     torch.save(vec_pems08.cpu(), pems08_emb_path)
 
 if os.path.exists(v_p):
-    print(f'Loading v embedding...')
+    log(f'Loading v embedding...')
     vec_virtual = torch.load(v_p, map_location='cpu')
     vec_virtual = vec_virtual.to(device)
 else:
-    print(f'Generating virtual embedding...')
+    log(f'Generating virtual embedding...')
     args.dataset = '8'
     vec_virtual, _ = generate_vector(virtual_road, args)
     vec_virtual = vec_virtual.to(device)
-    print(f'Saving virtual embedding...')
+    log(f'Saving virtual embedding...')
     torch.save(vec_virtual.cpu(), v_p)
 
-print(
+log(
     f'Successfully load embeddings, 4: {vec_pems04.shape}, 7: {vec_pems07.shape}, 8: {vec_pems08.shape}, vec_virtual:{vec_virtual.shape}')
 
 domain_criterion = torch.nn.NLLLoss()
@@ -1343,10 +1343,10 @@ adj_pems04 = adj_virtual
 args.dataset = "8"
 
 if os.path.exists(pretrain_model_path):
-    print(f'Loading pretrained model at {pretrain_model_path}')
+    log(f'Loading pretrained model at {pretrain_model_path}')
     state = torch.load(pretrain_model_path, map_location='cpu')
 else:
-    print(f'No existing pretrained model at {pretrain_model_path}')
+    log(f'No existing pretrained model at {pretrain_model_path}')
     args.val = args.test = False
     datasets = ["4"]
     dataset_bak = args.dataset
@@ -1357,10 +1357,10 @@ else:
     for dataset in [item for item in datasets if item not in [dataset_bak]]:
         dataset_count = dataset_count + 1
 
-        print(
+        log(
             f'\n\n****************************************************************************************************************')
-        print(f'dataset: {dataset}, model: {args.models}, pre_len: {args.pre_len}, labelrate: {args.labelrate}')
-        print(
+        log(f'dataset: {dataset}, model: {args.models}, pre_len: {args.pre_len}, labelrate: {args.labelrate}')
+        log(
             f'****************************************************************************************************************\n\n')
 
         if dataset == '4':
@@ -1376,7 +1376,7 @@ else:
         def load_graphdata_channel3(args, feat_dir, time, scaler=None, visualize=False, cut=False):
             data = virtual_city
             data = data.reshape((data.shape[0], data.shape[1] * data.shape[2]))
-            print(data.shape)
+            log(data.shape)
             if time:
                 num_data, num_sensor = data.shape
                 data = np.expand_dims(data, axis=-1)
@@ -1399,7 +1399,7 @@ else:
             train_data = data[:train_size]
             val_data = data[train_size:train_size + val_size]
             test_data = data[train_size + val_size:time_len]
-            print(data.shape)
+            log(data.shape)
             if args.labelrate != 100:
                 import random
                 new_train_size = int(train_size * args.labelrate / 100)
@@ -1497,7 +1497,7 @@ else:
         train_X, train_Y, val_X, val_Y, test_X, test_Y, max_speed, scaler = load_graphdata_channel3(args, "", False,
                                                                                                     scaler,
                                                                                                     visualize=False)
-        print([i.shape for i in [train_X, train_Y, val_X, val_Y, test_X, test_Y]])
+        log([i.shape for i in [train_X, train_Y, val_X, val_Y, test_X, test_Y]])
         train_dataloader = MyDataLoader(torch.FloatTensor(train_X), torch.FloatTensor(train_Y),
                                         batch_size=args.batch_size)
         val_dataloader = MyDataLoader(torch.FloatTensor(val_X), torch.FloatTensor(val_Y), batch_size=args.batch_size)
@@ -1516,7 +1516,7 @@ else:
 
         state = model_train(args, model, optimizer, train_dataloader, val_dataloader, test_dataloader, type)
 
-    print(f'Saving model to {pretrain_model_path} ...')
+    log(f'Saving model to {pretrain_model_path} ...')
     torch.save(state, pretrain_model_path)
     args.dataset = dataset_bak
     args.labelrate = labelrate_bak
@@ -1526,10 +1526,10 @@ else:
 type = 'fine-tune'
 args.epoch = args.fine_epoch
 args.dataset = "8"
-print(f'\n\n*******************************************************************************************')
-print(
+log(f'\n\n*******************************************************************************************')
+log(
     f'dataset: {args.dataset}, model: {args.models}, pre_len: {args.pre_len}, labelrate: {args.labelrate}, seed: {args.division_seed}')
-print(f'*******************************************************************************************\n\n')
+log(f'*******************************************************************************************\n\n')
 
 if args.dataset == '4':
     g = vec_pems04
@@ -1554,7 +1554,7 @@ if args.labelrate != 0:
     optimizer.load_state_dict(test_state['optim'])
 
 test_mae, test_rmse, test_mape = test(test_dataloader, type)
-print(f'mae: {test_mae: .4f}, rmse: {test_rmse: .4f}, mape: {test_mape * 100: .4f}\n\n')
+log(f'mae: {test_mae: .4f}, rmse: {test_rmse: .4f}, mape: {test_mape * 100: .4f}\n\n')
 if args.c != "default":
     if args.need_remark == 1:
         record.update(record_id, get_timestamp(),
