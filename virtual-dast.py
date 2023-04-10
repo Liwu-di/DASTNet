@@ -1094,7 +1094,7 @@ def train(dur, model, optimizer, total_step, start_step, need_road, train_datalo
     if type == 'pretrain':
         domain_classifier.eval()
     model.eval()
-    model.dataset = "8"
+
     for i, (feat, label) in enumerate(val_dataloader.get_iterator()):
         mask = select_mask(feat.shape[2])
         feat = torch.FloatTensor(feat).to(device)
