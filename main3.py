@@ -109,9 +109,6 @@ def train(dur, model, optimizer, total_step, start_step):
             label = label.reshape((-1, label.size(2)))
 
             if type == 'pretrain' and args.need_road == True:
-                log("========================")
-                log("=====use road info =====")
-                log("========================")
 
                 pems04_pred = domain_classifier(shared_pems04_feat, constant, Reverse)
                 pems08_pred = domain_classifier(shared_pems08_feat, constant, Reverse)
@@ -130,7 +127,7 @@ def train(dur, model, optimizer, total_step, start_step):
 
                 domain_loss = pems04_loss + pems08_loss
 
-        if type == 'pretrain':
+        if type == 'pretrain' and args.need_road:
             train_correct = pems04_correct + pems08_correct
 
         mae_train, rmse_train, mape_train = masked_loss(scaler.inverse_transform(pred), scaler.inverse_transform(label),
