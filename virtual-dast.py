@@ -1181,25 +1181,39 @@ def model_train(args, model, optimizer, train_dataloader, val_dataloader, test_d
         log(f'Epoch {epoch} | acc_train: {train_acc: .4f} | mae_train: {mae_train: .4f} | rmse_train: {rmse_train: .4f} | mae_val: {mae_val: .4f} | rmse_val: {rmse_val: .4f} | mae_test: {mae_test: .4f} | rmse_test: {rmse_test: .4f} | mape_test: {mape_test: .4f} | Time(s) {dur[-1]: .4f}')
         epoch += 1
         acc.append(train_acc)
-        if mae_val <= best:
-            if type == 'fine-tune' and mae_val > 0.001:
-                best = mae_val
-                state = dict([('model', copy.deepcopy(model.state_dict())),
-                              ('optim', copy.deepcopy(optimizer.state_dict())),
-                              ('domain_classifier', copy.deepcopy(domain_classifier.state_dict()))])
-                cnt = 0
-            elif type == 'pretrain':
-                best = mae_val
-                state = dict([('model', copy.deepcopy(model.state_dict())),
-                              ('optim', copy.deepcopy(optimizer.state_dict())),
-                              ('domain_classifier', copy.deepcopy(domain_classifier.state_dict()))])
-                cnt = 0
+        if args.need_weight == 0 or type == "fine-tune":
+            if mae_val <= best:
+                if type == 'fine-tune' and mae_val > 0.001:
+                    best = mae_val
+                    state = dict([('model', copy.deepcopy(model.state_dict())),
+                                  ('optim', copy.deepcopy(optimizer.state_dict())),
+                                  ('domain_classifier', copy.deepcopy(domain_classifier.state_dict()))])
+                    cnt = 0
+                elif type == 'pretrain':
+                    best = mae_val
+                    state = dict([('model', copy.deepcopy(model.state_dict())),
+                                  ('optim', copy.deepcopy(optimizer.state_dict())),
+                                  ('domain_classifier', copy.deepcopy(domain_classifier.state_dict()))])
+                    cnt = 0
+            else:
+                cnt += 1
+            if cnt == args.patience or epoch > args.epoch:
+                print(f'Stop!!')
+                print(f'Avg acc: {np.mean(acc)}')
+                break
         else:
-            cnt += 1
-        if cnt == args.patience or epoch > args.epoch:
-            print(f'Stop!!')
-            print(f'Avg acc: {np.mean(acc)}')
-            break
+            if source_weights_ma.mean().cpu() <= best:
+                best = source_weights_ma.mean().cpu().numpy().item()
+                state = dict([('model', copy.deepcopy(model.state_dict())),
+                              ('optim', copy.deepcopy(optimizer.state_dict())),
+                              ('domain_classifier', copy.deepcopy(domain_classifier.state_dict()))])
+                cnt = 0
+            else:
+                cnt += 1
+            if cnt == args.patience or epoch > args.epoch:
+                print(f'Stop!!')
+                print(f'Avg acc: {np.mean(acc)}')
+                break
     print("Optimization Finished!")
     return state
 
@@ -1323,7 +1337,7 @@ local_path_generate("/".join(b), create_folder_only=True)
 vec_pems04 = vec_virtual
 adj_pems04 = adj_virtual
 args.dataset = "8"
-tar_train_for_meta_loader = get_target_loader(args)
+
 if os.path.exists(pretrain_model_path):
     print(f'Loading pretrained model at {pretrain_model_path}')
     state = torch.load(pretrain_model_path, map_location='cpu')
@@ -1496,7 +1510,7 @@ else:
             model.load_state_dict(state['model'])
             optimizer.load_state_dict(state['optim'])
 
-        state = model_train(args, model, optimizer, train_dataloader, tar_train_for_meta_loader[1], tar_train_for_meta_loader[2], type)
+        state = model_train(args, model, optimizer, train_dataloader, val_dataloader, test_dataloader, type)
 
     print(f'Saving model to {pretrain_model_path} ...')
     torch.save(state, pretrain_model_path)
