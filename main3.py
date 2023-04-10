@@ -254,6 +254,7 @@ def model_train(args, model, optimizer):
 
 
 args = arg_parse(argparse.ArgumentParser())
+print(args)
 device = torch.device("cuda:" + str(args.device) if torch.cuda.is_available() else "cpu")
 print(f'device: {device}')
 if args.c != "default":
