@@ -501,11 +501,54 @@ log("s_adj3, %d nodes, %d edges" % (virtual_s_adj.shape[0], np.sum(virtual_s_adj
 log("d_adj3, %d nodes, %d edges" % (virtual_d_adj.shape[0], np.sum(virtual_d_adj > 0)))
 log()
 
-virtual_graphs = adjs_to_graphs([virtual_prox_adj, virtual_road_adj, virtual_poi_adj, virtual_s_adj, virtual_d_adj])
+
+
+device = torch.device("cuda:" + str(args.device) if torch.cuda.is_available() else "cpu")
+print(f'device: {device}')
+torch.manual_seed(0)
+np.random.seed(0)
+
+if args.labelrate > 100:
+    args.labelrate = 100
+
+adj_pems04, adj_pems07, adj_pems08 = load_all_adj(device)
+vec_pems04 = vec_pems07 = vec_pems08 = None, None, None
+virtual_road = np.where(virtual_road >= 1, 1, virtual_road)
+virtual_road = add_self_loop(virtual_road)
+for m in range(virtual_road.shape[0]):
+    for n in range(virtual_road.shape[1]):
+        a, b = idx_1d22d(m, virtual_road.shape)
+        c, d = idx_1d22d(n, virtual_road.shape)
+        dis = abs(a - c) + abs(b - d)
+        if virtual_road[m][n] - 0 > 1e-6 and dis != 0:
+            virtual_road[m][n] = virtual_road[m][n] / dis
+adj_virtual = torch.tensor(virtual_road).to(device)
+dc = np.load("./data/DC/{}DC_{}.npy".format(args.dataname, args.datatype))
+dcmask = dc.sum(0) > 0
+
+chi = np.load("./data/CHI/{}CHI_{}.npy".format(args.dataname, args.datatype))
+chimask = chi.sum(0) > 0
+
+ny = np.load("./data/NY/{}NY_{}.npy".format(args.dataname, args.datatype))
+nymask = ny.sum(0) > 0
+
+target_road_adj = np.where(target_road_adj >= 1, 1, target_road_adj)
+target_road_adj = add_self_loop(target_road_adj)
+for m in range(target_road_adj.shape[0]):
+    for n in range(target_road_adj.shape[1]):
+        a, b = idx_1d22d(m, target_road_adj.shape)
+        c, d = idx_1d22d(n, target_road_adj.shape)
+        dis = abs(a - c) + abs(b - d)
+        if target_road_adj[m][n] - 0 > 1e-6 and dis != 0:
+            target_road_adj[m][n] = target_road_adj[m][n] / dis
+target_graphs = adjs_to_graphs([target_prox_adj, target_road_adj, target_poi_adj, target_s_adj, target_d_adj])
+
+virtual_graphs = adjs_to_graphs([virtual_prox_adj, virtual_road, virtual_poi_adj, virtual_s_adj, virtual_d_adj])
 for i in range(len(virtual_graphs)):
     virtual_graphs[i] = virtual_graphs[i].to(device)
+    target_graphs[i] = target_graphs[i].to(device)
 virtual_edges, virtual_edge_labels = graphs_to_edge_labels(virtual_graphs)
-
+target_edges, target_edge_labels = graphs_to_edge_labels(target_graphs)
 
 class Scoring(nn.Module):
     def __init__(self, emb_dim, source_mask, target_mask):
@@ -1155,34 +1198,7 @@ def model_train(args, model, optimizer, train_dataloader, val_dataloader, test_d
     return state
 
 
-device = torch.device("cuda:" + str(args.device) if torch.cuda.is_available() else "cpu")
-print(f'device: {device}')
-torch.manual_seed(0)
-np.random.seed(0)
 
-if args.labelrate > 100:
-    args.labelrate = 100
-
-adj_pems04, adj_pems07, adj_pems08 = load_all_adj(device)
-vec_pems04 = vec_pems07 = vec_pems08 = None, None, None
-virtual_road = np.where(virtual_road >= 1, 1, virtual_road)
-virtual_road = add_self_loop(virtual_road)
-for m in range(virtual_road.shape[0]):
-    for n in range(virtual_road.shape[1]):
-        a, b = idx_1d22d(m, virtual_road.shape)
-        c, d = idx_1d22d(n, virtual_road.shape)
-        dis = abs(a - c) + abs(b - d)
-        if virtual_road[m][n] - 0 > 1e-6 and dis != 0:
-            virtual_road[m][n] = virtual_road[m][n] / dis
-adj_virtual = torch.tensor(virtual_road).to(device)
-dc = np.load("./data/DC/{}DC_{}.npy".format(args.dataname, args.datatype))
-dcmask = dc.sum(0) > 0
-
-chi = np.load("./data/CHI/{}CHI_{}.npy".format(args.dataname, args.datatype))
-chimask = chi.sum(0) > 0
-
-ny = np.load("./data/NY/{}NY_{}.npy".format(args.dataname, args.datatype))
-nymask = ny.sum(0) > 0
 
 cur_dir = os.getcwd()
 if cur_dir[-2:] == 'sh':
