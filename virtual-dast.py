@@ -541,9 +541,15 @@ for m in range(target_road_adj.shape[0]):
         dis = abs(a - c) + abs(b - d)
         if target_road_adj[m][n] - 0 > 1e-6 and dis != 0:
             target_road_adj[m][n] = target_road_adj[m][n] / dis
-target_graphs = adjs_to_graphs([target_prox_adj, target_road_adj, target_poi_adj, target_s_adj, target_d_adj])
+if args.need_road_adj:
+    target_graphs = adjs_to_graphs([target_prox_adj, target_road_adj, target_poi_adj, target_s_adj, target_d_adj])
 
-virtual_graphs = adjs_to_graphs([virtual_prox_adj, virtual_road, virtual_poi_adj, virtual_s_adj, virtual_d_adj])
+    virtual_graphs = adjs_to_graphs([virtual_prox_adj, virtual_road, virtual_poi_adj, virtual_s_adj, virtual_d_adj])
+else:
+    target_graphs = adjs_to_graphs([target_prox_adj, target_poi_adj, target_s_adj, target_d_adj])
+
+    virtual_graphs = adjs_to_graphs([virtual_prox_adj, virtual_poi_adj, virtual_s_adj, virtual_d_adj])
+
 for i in range(len(virtual_graphs)):
     virtual_graphs[i] = virtual_graphs[i].to(device)
     target_graphs[i] = target_graphs[i].to(device)
@@ -587,11 +593,11 @@ cross_num_heads = 2
 cross_mmd_w = args.mmd_w
 cross_et_w = args.et_w
 cross_ma_param = args.ma_coef
-mvgat = MVGAT(len(source_graphs), cross_num_gat_layers, cross_in_dim, cross_hidden_dim, cross_emb_dim, cross_num_heads,
+mvgat = MVGAT(len(virtual_graphs), cross_num_gat_layers, cross_in_dim, cross_hidden_dim, cross_emb_dim, cross_num_heads,
               True).to(device)
-fusion = FusionModule(len(source_graphs), cross_emb_dim, 0.8).to(device)
+fusion = FusionModule(len(virtual_graphs), cross_emb_dim, 0.8).to(device)
 scoring = Scoring(cross_emb_dim, th_mask_virtual, th_mask_target).to(device)
-edge_disc = EdgeTypeDiscriminator(len(source_graphs), cross_emb_dim).to(device)
+edge_disc = EdgeTypeDiscriminator(len(virtual_graphs), cross_emb_dim).to(device)
 mmd = MMD_loss()
 emb_param_list = list(mvgat.parameters()) + list(fusion.parameters()) + list(edge_disc.parameters())
 emb_optimizer = optim.Adam(emb_param_list, lr=args.learning_rate, weight_decay=args.weight_decay)
