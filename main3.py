@@ -109,6 +109,10 @@ def train(dur, model, optimizer, total_step, start_step):
             label = label.reshape((-1, label.size(2)))
 
             if type == 'pretrain' and args.need_road:
+                log("========================")
+                log("=====use road info =====")
+                log("========================")
+
                 pems04_pred = domain_classifier(shared_pems04_feat, constant, Reverse)
                 pems08_pred = domain_classifier(shared_pems08_feat, constant, Reverse)
 
