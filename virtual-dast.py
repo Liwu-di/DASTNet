@@ -501,8 +501,6 @@ log("s_adj3, %d nodes, %d edges" % (virtual_s_adj.shape[0], np.sum(virtual_s_adj
 log("d_adj3, %d nodes, %d edges" % (virtual_d_adj.shape[0], np.sum(virtual_d_adj > 0)))
 log()
 
-
-
 device = torch.device("cuda:" + str(args.device) if torch.cuda.is_available() else "cpu")
 print(f'device: {device}')
 torch.manual_seed(0)
@@ -555,6 +553,7 @@ for i in range(len(virtual_graphs)):
     target_graphs[i] = target_graphs[i].to(device)
 virtual_edges, virtual_edge_labels = graphs_to_edge_labels(virtual_graphs)
 target_edges, target_edge_labels = graphs_to_edge_labels(target_graphs)
+
 
 class Scoring(nn.Module):
     def __init__(self, emb_dim, source_mask, target_mask):
@@ -925,8 +924,15 @@ def meta_train_epoch(s_embs, t_embs, net):
 
             t_x = t_x.to(device)
             t_y = t_y.to(device)
-            pred_source = net.functional_forward(vec_pems04, vec_pems07, vec_pems08, t_x, True, fast_weights, bn_vars,
-                                                 bn_training=True, data_set="8")
+            pred, shared_pems04_feat, shared_pems07_feat, shared_pems08_feat = net.functional_forward(vec_pems04,
+                                                                                                      vec_pems07,
+                                                                                                      vec_pems08, t_x,
+                                                                                                      False,
+                                                                                                      fast_weights,
+                                                                                                      bn_vars,
+                                                                                                      bn_training=True,
+                                                                                                      data_set="8")
+            log([i.shape for i in [shared_pems04_feat, shared_pems07_feat, shared_pems08_feat]])
             label = t_y.reshape((pred_source.shape[0], -1, pred_source.shape[2]))
             mask = th_mask_target
             mask = mask.reshape((1, mask.shape[1] * mask.shape[2], 1))
@@ -1216,8 +1222,6 @@ def model_train(args, model, optimizer, train_dataloader, val_dataloader, test_d
                 break
     print("Optimization Finished!")
     return state
-
-
 
 
 cur_dir = os.getcwd()
