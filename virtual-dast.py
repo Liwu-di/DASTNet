@@ -906,7 +906,7 @@ def net_fix(source, y, weight, mask, fast_weights, bn_vars, net, epoch):
     pems08_pred_label = pems08_pred.max(1, keepdim=True)[1]
     pems08_correct = pems08_pred_label.eq(pems08_label.view_as(pems08_pred_label)).sum()
     mmmm = (th_mask_virtual.reshape((-1)))
-    log(pems04_pred[mmmm.bool(), :].shape, weight.shape, weight.repeat((3, 1)).reshape((-1, 3)).shape)
+
     pems04_pred = pems04_pred[mmmm.bool(), :]
     pems04_label = pems04_label[mmmm.bool()]
 
