@@ -907,8 +907,8 @@ def net_fix(source, y, weight, mask, fast_weights, bn_vars, net, epoch):
     pems08_correct = pems08_pred_label.eq(pems08_label.view_as(pems08_pred_label)).sum()
     mmmm = (th_mask_virtual.reshape((-1)))
     log(pems04_pred[mmmm.bool(), :].shape, weight.shape, weight.repeat((3, 1)).reshape((-1, 3)).shape)
-    pems04_pred = torch.mul(pems04_pred[mmmm.bool(), :])
-    pems04_label = torch.mul(pems04_label[mmmm.bool()])
+    pems04_pred = pems04_pred[mmmm.bool(), :]
+    pems04_label = pems04_label[mmmm.bool()]
     pems04_loss = F.nll_loss(pems04_pred, pems04_label, weight=weight)
     pems07_loss = F.nll_loss(pems07_pred, pems07_label)
 
@@ -1180,8 +1180,8 @@ def train(dur, model, optimizer, total_step, start_step, need_road, train_datalo
                 pems08_correct = pems08_pred_label.eq(pems08_label.view_as(pems08_pred_label)).sum()
 
                 mmmm = (th_mask_virtual.reshape((-1)))
-                pems04_pred = torch.mul(pems04_pred[mmmm.bool(), :])
-                pems04_label = torch.mul(pems04_label[mmmm.bool()])
+                pems04_pred = pems04_pred[mmmm.bool(), :]
+                pems04_label = pems04_label[mmmm.bool()]
                 pems04_loss = F.nll_loss(pems04_pred, pems04_label, weight=weight)
 
                 pems07_loss = domain_criterion(pems07_pred, pems07_label)
