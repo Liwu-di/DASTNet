@@ -1066,7 +1066,7 @@ def meta_train_epoch(s_embs, t_embs, net, epoch):
             pems08_correct = pems08_pred_label.eq(pems08_label.view_as(pems08_pred_label)).sum()
             mmmm = (th_mask_virtual.reshape((-1)))
             pems04_pred = pems04_pred[mmmm.bool(), :]
-            pems04_label = pems04_label[mmmm.bool(), :]
+            pems04_label = pems04_label[mmmm.bool()]
 
             pems04_loss = domain_criterion(pems04_pred, pems04_label)
             pems07_loss = domain_criterion(pems07_pred, pems07_label)
