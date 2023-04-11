@@ -906,9 +906,9 @@ def net_fix(source, y, weight, mask, fast_weights, bn_vars, net, epoch):
     pems08_pred_label = pems08_pred.max(1, keepdim=True)[1]
     pems08_correct = pems08_pred_label.eq(pems08_label.view_as(pems08_pred_label)).sum()
     mmmm = (th_mask_virtual.reshape((-1)))
-    log(pems04_pred[mmmm.bool(), :].shape, weight.reshape((-1, 1)).shape, weight.reshape((-1, 1)).repeat((1, 3)).shape)
-    pems04_pred = torch.mul(pems04_pred[mmmm.bool(), :], weight.reshape((-1, 1)).repeat((1, 3)))
-    pems04_label = torch.mul(pems04_label[mmmm.bool(), :], weight.reshape((-1, 1)).repeat((1, 3)))
+    log(pems04_pred[mmmm.bool(), :].shape, weight.shape, weight.repeat((3, 1)).shape)
+    pems04_pred = torch.mul(pems04_pred[mmmm.bool(), :], weight.repeat((3, 1)))
+    pems04_label = torch.mul(pems04_label[mmmm.bool(), :], weight.repeat((3, 1)))
     pems04_loss = domain_criterion(pems04_pred, pems04_label)
     pems07_loss = domain_criterion(pems07_pred, pems07_label)
     pems08_loss = domain_criterion(pems08_pred, pems08_label)
@@ -985,8 +985,18 @@ def meta_train_epoch(s_embs, t_embs, net, epoch):
             pems07_correct = pems07_pred_label.eq(pems07_label.view_as(pems07_pred_label)).sum()
             pems08_pred_label = pems08_pred.max(1, keepdim=True)[1]
             pems08_correct = pems08_pred_label.eq(pems08_label.view_as(pems08_pred_label)).sum()
+
+            mmmm = (th_mask_virtual.reshape((-1)))
+            pems04_pred = pems04_pred[mmmm.bool(), :]
+            pems04_label = pems04_label[mmmm.bool(), :]
+
             pems04_loss = domain_criterion(pems04_pred, pems04_label)
             pems07_loss = domain_criterion(pems07_pred, pems07_label)
+
+            mmmm = (th_mask_target.reshape((-1)))
+            pems08_pred = pems08_pred[mmmm.bool(), :]
+            pems08_label = pems08_label[mmmm.bool(), :]
+
             pems08_loss = domain_criterion(pems08_pred, pems08_label)
 
             domain_loss = pems04_loss + pems08_loss
@@ -1157,8 +1167,8 @@ def train(dur, model, optimizer, total_step, start_step, need_road, train_datalo
                 pems08_correct = pems08_pred_label.eq(pems08_label.view_as(pems08_pred_label)).sum()
 
                 mmmm = (th_mask_virtual.reshape((-1)))
-                pems04_pred = torch.mul(pems04_pred[mmmm.bool(), :], weight.reshape((-1, 1)).repeat((1, 3)))
-                pems04_label = torch.mul(pems04_label[mmmm.bool(), :], weight.reshape((-1, 1)).repeat((1, 3)))
+                pems04_pred = torch.mul(pems04_pred[mmmm.bool(), :], weight.repeat((3, 1)))
+                pems04_label = torch.mul(pems04_label[mmmm.bool(), :], weight.repeat((3, 1)))
 
                 pems04_loss = domain_criterion(pems04_pred, pems04_label)
                 pems07_loss = domain_criterion(pems07_pred, pems07_label)
