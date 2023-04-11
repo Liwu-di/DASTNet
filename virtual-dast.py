@@ -908,7 +908,7 @@ def net_fix(source, y, weight, mask, fast_weights, bn_vars, net, epoch):
     mmmm = (th_mask_virtual.reshape((-1)))
     log(pems04_pred[mmmm.bool(), :].shape, weight.shape, weight.repeat((3, 1)).reshape((-1, 3)).shape)
     pems04_pred = torch.mul(pems04_pred[mmmm.bool(), :], weight.repeat((3, 1)).reshape((-1, 3)))
-    pems04_label = torch.mul(pems04_label[mmmm.bool(), :], weight)
+    pems04_label = torch.mul(pems04_label[mmmm.bool()], weight)
     pems04_loss = domain_criterion(pems04_pred, pems04_label)
     pems07_loss = domain_criterion(pems07_pred, pems07_label)
 
@@ -992,14 +992,14 @@ def meta_train_epoch(s_embs, t_embs, net, epoch):
 
             mmmm = (th_mask_virtual.reshape((-1)))
             pems04_pred = pems04_pred[mmmm.bool(), :]
-            pems04_label = pems04_label[mmmm.bool(), :]
+            pems04_label = pems04_label[mmmm.bool()]
 
             pems04_loss = domain_criterion(pems04_pred, pems04_label)
             pems07_loss = domain_criterion(pems07_pred, pems07_label)
 
             mmmm = (th_mask_target.reshape((-1)))
             pems08_pred = pems08_pred[mmmm.bool(), :]
-            pems08_label = pems08_label[mmmm.bool(), :]
+            pems08_label = pems08_label[mmmm.bool()]
 
             pems08_loss = domain_criterion(pems08_pred, pems08_label)
 
@@ -1181,14 +1181,14 @@ def train(dur, model, optimizer, total_step, start_step, need_road, train_datalo
 
                 mmmm = (th_mask_virtual.reshape((-1)))
                 pems04_pred = torch.mul(pems04_pred[mmmm.bool(), :], weight.repeat((3, 1)).reshape((-1, 3)))
-                pems04_label = torch.mul(pems04_label[mmmm.bool(), :], weight)
+                pems04_label = torch.mul(pems04_label[mmmm.bool()], weight)
 
                 pems04_loss = domain_criterion(pems04_pred, pems04_label)
                 pems07_loss = domain_criterion(pems07_pred, pems07_label)
 
                 mmmm = (th_mask_target.reshape((-1)))
                 pems08_pred = pems08_pred[mmmm.bool(), :]
-                pems08_label = pems08_label[mmmm.bool(), :]
+                pems08_label = pems08_label[mmmm.bool()]
                 pems08_loss = domain_criterion(pems08_pred, pems08_label)
 
                 domain_loss = pems04_loss + pems08_loss
