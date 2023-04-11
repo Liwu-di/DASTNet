@@ -909,7 +909,7 @@ def net_fix(source, y, weight, mask, fast_weights, bn_vars, net, epoch):
     log(pems04_pred[mmmm.bool(), :].shape, weight.shape, weight.repeat((3, 1)).reshape((-1, 3)).shape)
     pems04_pred = pems04_pred[mmmm.bool(), :]
     pems04_label = pems04_label[mmmm.bool()]
-    ww = torch.ones(weight.shape)
+    ww = torch.ones(weight.shape).to(weight.device)
     ww = torch.mul(ww, weight).to(weight.device)
     pems04_loss = F.nll_loss(pems04_pred, pems04_label, weight=ww)
     pems07_loss = F.nll_loss(pems07_pred, pems07_label)
@@ -1184,7 +1184,7 @@ def train(dur, model, optimizer, total_step, start_step, need_road, train_datalo
                 mmmm = (th_mask_virtual.reshape((-1)))
                 pems04_pred = pems04_pred[mmmm.bool(), :]
                 pems04_label = pems04_label[mmmm.bool()]
-                ww = torch.ones(weight.shape)
+                ww = torch.ones(weight.shape).to(weight.device)
                 ww = torch.mul(ww, weight).to(weight.device)
                 pems04_loss = F.nll_loss(pems04_pred, pems04_label, weight=ww)
 
