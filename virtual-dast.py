@@ -915,7 +915,7 @@ def net_fix(source, y, weight, mask, fast_weights, bn_vars, net, epoch):
 
     mmmm = (th_mask_target.reshape((-1)))
     pems08_pred = pems08_pred[mmmm.bool(), :]
-    pems08_label = pems08_label[mmmm.bool(), :]
+    pems08_label = pems08_label[mmmm.bool()]
     pems08_loss = domain_criterion(pems08_pred, pems08_label)
 
     domain_loss = pems04_loss + pems08_loss
@@ -1073,7 +1073,7 @@ def meta_train_epoch(s_embs, t_embs, net, epoch):
 
             mmmm = (th_mask_target.reshape((-1)))
             pems08_pred = pems08_pred[mmmm.bool(), :]
-            pems08_label = pems08_label[mmmm.bool(), :]
+            pems08_label = pems08_label[mmmm.bool()]
 
             pems08_loss = domain_criterion(pems08_pred, pems08_label)
 
