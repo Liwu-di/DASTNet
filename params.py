@@ -157,6 +157,7 @@ def params():
     parser.add_argument("--need_road_adj", action='store_false', default=True, help='test')
     parser.add_argument("--v", type=bool, default=True)
     parser.add_argument("--normal", type=int, default=0)
+    parser.add_argument("--simu_fine_epoch", type=int, default=10)
 
 
 

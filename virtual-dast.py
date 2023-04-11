@@ -1328,7 +1328,62 @@ def model_train(args, model, optimizer, train_dataloader, val_dataloader, test_d
                 log(f'Avg acc: {np.mean(acc)}')
                 break
         else:
-            if source_weights_ma.mean().cpu() <= best:
+            fast_weights, bn_vars = get_weights_bn_vars(model)
+            for i in range(10):
+                s_x1, s_y1 = batch_sampler((torch.Tensor(target_train_x), torch.Tensor(target_train_y)),
+                                           args.batch_size)
+                s_x1 = s_x1.reshape((args.batch_size, -1, s_x1.shape[2] * s_x1.shape[3]))
+                s_y1 = s_y1.reshape((args.batch_size, -1, s_y1.shape[2] * s_y1.shape[3]))
+                s_x1 = s_x1.to(device)
+                s_y1 = s_y1.to(device)
+                pred_source = model.functional_forward(vec_pems04,
+                                                       vec_pems07,
+                                                       vec_pems08,
+                                                       s_x1, True,
+                                                       fast_weights,
+                                                       bn_vars,
+                                                       bn_training=True,
+                                                       data_set="8")
+
+                label = s_y1.reshape((pred_source.shape[0], -1, pred_source.shape[2]))
+                mask = copy.deepcopy(th_mask_target)
+                mask = mask.to(device)
+                mask = mask.reshape((1, mask.shape[1] * mask.shape[2], 1))
+                fast_loss = torch.abs(pred_source - label)[:, mask.view(-1).bool(), :]
+                fast_loss = fast_loss.mean(0).sum()
+                a = [(i, torch.autograd.grad(fast_loss, fast_weights[i], create_graph=True, allow_unused=True)) for i in
+                     fast_weights.keys()]
+                grads = {}
+                used_fast_weight = OrderedDict()
+                for i in a:
+                    if i[1][0] is not None:
+                        grads[i[0]] = i[1][0]
+                        used_fast_weight[i[0]] = fast_weights[i[0]]
+
+                for name, grad in zip(grads.keys(), grads.values()):
+                    fast_weights[name] = fast_weights[name] - args.innerlr * grad
+            val_mae = []
+            for i, (feat, label) in enumerate(tvl.get_iterator()):
+                mask = select_mask(feat.shape[2])
+                feat = torch.FloatTensor(feat).to(device)
+                label = torch.FloatTensor(label).to(device)
+                if torch.sum(scaler.inverse_transform(label)) <= 0.001:
+                    continue
+                pred = model.functional_forward(vec_pems04,
+                                                vec_pems07,
+                                                vec_pems08,
+                                                s_x1, True,
+                                                fast_weights,
+                                                bn_vars,
+                                                bn_training=True,
+                                                data_set="8")
+                pred = pred.transpose(1, 2).reshape((-1, feat.size(2)))
+                label = label.reshape((-1, label.size(2)))
+                mae_val, rmse_val, mape_val = masked_loss(scaler.inverse_transform(pred),
+                                                          scaler.inverse_transform(label), maskp=mask)
+                val_mae.append(mae_val.item())
+            log(np.mean(val_mae))
+            if np.mean(val_mae) <= best:
                 best = source_weights_ma.mean().cpu().numpy().item()
                 state = dict([('model', copy.deepcopy(model.state_dict())),
                               ('optim', copy.deepcopy(optimizer.state_dict())),
@@ -1461,7 +1516,10 @@ local_path_generate("/".join(b), create_folder_only=True)
 vec_pems04 = vec_virtual
 adj_pems04 = adj_virtual
 args.dataset = "8"
-
+databak = args.dataset
+args.dataset = "8"
+ttl, tvl, testtl = get_target_loader(args)
+args.dataset = databak
 if os.path.exists(pretrain_model_path):
     log(f'Loading pretrained model at {pretrain_model_path}')
     state = torch.load(pretrain_model_path, map_location='cpu')
