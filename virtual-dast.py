@@ -1287,17 +1287,17 @@ def model_train(args, model, optimizer, train_dataloader, val_dataloader, test_d
             if epoch == 1:
                 source_weights_ma = torch.ones_like(source_weights, device=device, requires_grad=False)
             source_weights_ma = cross_ma_param * source_weights_ma + (1 - cross_ma_param) * source_weights
-            shows = np.zeros((virtual_city.shape[1], virtual_city.shape[2]))
-            count = 0
-            for p in range(virtual_city.shape[1]):
-                for q in range(virtual_city.shape[2]):
-                    if mask_virtual[p][q]:
-                        shows[p][q] = source_weights_ma[count]
-                        count = count + 1
-            heatmap = seaborn.heatmap(shows)
-            fig = heatmap.get_figure()
-            fig.savefig(local_path_generate("", "{}".format(str(epoch)), ".png" ))
-            fig.show()
+            # shows = np.zeros((virtual_city.shape[1], virtual_city.shape[2]))
+            # count = 0
+            # for p in range(virtual_city.shape[1]):
+            #     for q in range(virtual_city.shape[2]):
+            #         if mask_virtual[p][q]:
+            #             shows[p][q] = source_weights_ma[count]
+            #             count = count + 1
+            # heatmap = seaborn.heatmap(shows)
+            # fig = heatmap.get_figure()
+            # fig.savefig(local_path_generate("", "{}".format(str(epoch)), ".png" ))
+            # fig.show()
 
             log(source_weights_ma.mean())
         else:
