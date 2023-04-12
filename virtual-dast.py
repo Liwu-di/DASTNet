@@ -921,10 +921,9 @@ def net_fix(source, y, weight, mask, fast_weights, bn_vars, net, epoch):
 
     domain_loss = pems04_loss + pems08_loss
     label = y.reshape((pred_source.shape[0], -1, pred_source.shape[2]))
-    mask = mask.reshape((1, mask.shape[1] * mask.shape[2], 1))
-    fast_loss = torch.abs(pred_source - label)[:, mask.view(-1).bool(), :]
-    fast_loss = (fast_loss * weight.view((1, -1, 1))).mean(0).sum()
-    fast_loss = fast_loss + args.beta * (args.theta * domain_loss)
+
+    mae_train, rmse_train, mape_train = masked_loss(pred_source, label, maskp=mask_virtual, weight=weight)
+    fast_loss = mae_train + args.beta * (args.theta * domain_loss)
     a = [(i, torch.autograd.grad(fast_loss, fast_weights[i], create_graph=True, allow_unused=True)) for i in
          fast_weights.keys()]
     grads = {}
@@ -1008,10 +1007,8 @@ def meta_train_epoch(s_embs, t_embs, net, epoch):
             domain_loss = pems04_loss + pems08_loss
             label = t_y.reshape((pred_source.shape[0], -1, pred_source.shape[2]))
             mask = th_mask_target
-            mask = mask.reshape((1, mask.shape[1] * mask.shape[2], 1))
-            fast_loss = torch.abs(pred_source - label)[:, mask.view(-1).bool(), :]
-            fast_loss = fast_loss.mean(0).sum()
-            fast_loss = fast_loss + args.beta * (args.theta * domain_loss)
+            mae_train, rmse_train, mape_train = masked_loss(pred_source, label, maskp=mask_target)
+            fast_loss = mae_train + args.beta * (args.theta * domain_loss)
             a = [(i, torch.autograd.grad(fast_loss, fast_weights[i], create_graph=True, allow_unused=True)) for i in
                  fast_weights.keys()]
             grads = {}
@@ -1081,9 +1078,8 @@ def meta_train_epoch(s_embs, t_embs, net, epoch):
             domain_loss = pems04_loss + pems08_loss
             label = y_q.reshape((pred_source.shape[0], -1, pred_source.shape[2]))
             mask = temp_mask.reshape((1, temp_mask.shape[1] * temp_mask.shape[2], 1))
-            fast_loss = torch.abs(pred_source - label)[:, mask.view(-1).bool(), :]
-            fast_loss = fast_loss.mean(0).sum()
-            fast_loss = fast_loss + args.beta * (args.theta * domain_loss)
+            mae_train, rmse_train, mape_train = masked_loss(pred_source, label, maskp=mask_target)
+            fast_loss = mae_train + args.beta * (args.theta * domain_loss)
             q_losses.append(fast_loss)
         q_loss = torch.stack(q_losses).mean()
         weights_mean = source_weights.mean()
