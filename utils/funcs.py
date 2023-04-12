@@ -465,7 +465,7 @@ def masked_loss(y_pred, y_true, maskp=None, weight=None):
     if maskp is not None:
         mask = maskp
     if weight is None:
-        mae_loss = mae_loss[torch.from_numpy(maskp).to(y_pred.device).reshape((-1))]
+        mae_loss = mae_loss[:, torch.from_numpy(maskp).to(y_pred.device).reshape((-1))]
     else:
         mmmm = (torch.from_numpy(maskp).to(y_pred.device).reshape((-1)))
         mae_loss = mae_loss[:, mmmm]
