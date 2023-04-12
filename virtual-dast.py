@@ -1389,7 +1389,7 @@ def model_train(args, model, optimizer, train_dataloader, val_dataloader, test_d
             #                                               scaler.inverse_transform(label), maskp=mask)
             #     val_mae.append(mae_val.item())
             # log(np.mean(val_mae))
-            if source_weights_ma.mean() <= best:
+            if source_weights_ma.mean() <= best and source_weights_ma.mean() > 0.005:
                 best = source_weights_ma.mean().cpu().numpy().item()
                 state = dict([('model', copy.deepcopy(model.state_dict())),
                               ('optim', copy.deepcopy(optimizer.state_dict())),
