@@ -9,6 +9,7 @@ import argparse
 import ast
 from collections import OrderedDict
 import numpy as np
+import seaborn
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -1288,6 +1289,18 @@ def model_train(args, model, optimizer, train_dataloader, val_dataloader, test_d
             if epoch == 1:
                 source_weights_ma = torch.ones_like(source_weights, device=device, requires_grad=False)
             source_weights_ma = cross_ma_param * source_weights_ma + (1 - cross_ma_param) * source_weights
+            shows = np.zeros((virtual_city.shape[1], virtual_city.shape[2]))
+            count = 0
+            for p in range(virtual_city.shape[1]):
+                for q in range(virtual_city.shape[2]):
+                    if mask_virtual[p][q]:
+                        shows[p][q] = source_weights_ma[count]
+                        count = count + 1
+            heatmap = seaborn.heatmap(shows, annot=True)
+            fig = heatmap.get_figure()
+            fig.savefig(local_path_generate("", "{}".format(str(epoch)), ".png" ))
+            fig.show()
+
             log(source_weights_ma.mean())
         else:
             source_weights_ma = None
@@ -1328,59 +1341,59 @@ def model_train(args, model, optimizer, train_dataloader, val_dataloader, test_d
                 log(f'Avg acc: {np.mean(acc)}')
                 break
         else:
-            fast_weights, bn_vars = get_weights_bn_vars(model)
-            for i in range(args.simu_fine_epoch):
-                for i, (feat, label) in enumerate(ttl.get_iterator()):
-                    mask = select_mask(feat.shape[2])
-                    feat = torch.FloatTensor(feat).to(device)
-                    label = torch.FloatTensor(label).to(device)
-                    if torch.sum(scaler.inverse_transform(label)) <= 0.001:
-                        continue
-                    pred = model.functional_forward(vec_pems04,
-                                                    vec_pems07,
-                                                    vec_pems08,
-                                                    feat, True,
-                                                    fast_weights,
-                                                    bn_vars,
-                                                    bn_training=True,
-                                                    data_set="8")
-                    pred = pred.transpose(1, 2).reshape((-1, feat.size(2)))
-                    label = label.reshape((-1, label.size(2)))
-                    mae_val, rmse_val, mape_val = masked_loss(scaler.inverse_transform(pred),
-                                                              scaler.inverse_transform(label), maskp=mask)
-                    a = [(i, torch.autograd.grad(mae_val, fast_weights[i], create_graph=True, allow_unused=True)) for i in
-                         fast_weights.keys()]
-                    grads = {}
-                    used_fast_weight = OrderedDict()
-                    for i in a:
-                        if i[1][0] is not None:
-                            grads[i[0]] = i[1][0]
-                            used_fast_weight[i[0]] = fast_weights[i[0]]
-
-                    for name, grad in zip(grads.keys(), grads.values()):
-                        fast_weights[name] = fast_weights[name] - args.innerlr * grad
-            val_mae = []
-            for i, (feat, label) in enumerate(tvl.get_iterator()):
-                mask = select_mask(feat.shape[2])
-                feat = torch.FloatTensor(feat).to(device)
-                label = torch.FloatTensor(label).to(device)
-                if torch.sum(scaler.inverse_transform(label)) <= 0.001:
-                    continue
-                pred = model.functional_forward(vec_pems04,
-                                                vec_pems07,
-                                                vec_pems08,
-                                                s_x1, True,
-                                                fast_weights,
-                                                bn_vars,
-                                                bn_training=True,
-                                                data_set="8")
-                pred = pred.transpose(1, 2).reshape((-1, feat.size(2)))
-                label = label.reshape((-1, label.size(2)))
-                mae_val, rmse_val, mape_val = masked_loss(scaler.inverse_transform(pred),
-                                                          scaler.inverse_transform(label), maskp=mask)
-                val_mae.append(mae_val.item())
-            log(np.mean(val_mae))
-            if np.mean(val_mae) <= best:
+            # fast_weights, bn_vars = get_weights_bn_vars(model)
+            # for i in range(args.simu_fine_epoch):
+            #     for i, (feat, label) in enumerate(ttl.get_iterator()):
+            #         mask = select_mask(feat.shape[2])
+            #         feat = torch.FloatTensor(feat).to(device)
+            #         label = torch.FloatTensor(label).to(device)
+            #         if torch.sum(scaler.inverse_transform(label)) <= 0.001:
+            #             continue
+            #         pred = model.functional_forward(vec_pems04,
+            #                                         vec_pems07,
+            #                                         vec_pems08,
+            #                                         feat, True,
+            #                                         fast_weights,
+            #                                         bn_vars,
+            #                                         bn_training=True,
+            #                                         data_set="8")
+            #         pred = pred.transpose(1, 2).reshape((-1, feat.size(2)))
+            #         label = label.reshape((-1, label.size(2)))
+            #         mae_val, rmse_val, mape_val = masked_loss(scaler.inverse_transform(pred),
+            #                                                   scaler.inverse_transform(label), maskp=mask)
+            #         a = [(i, torch.autograd.grad(mae_val, fast_weights[i], create_graph=True, allow_unused=True)) for i in
+            #              fast_weights.keys()]
+            #         grads = {}
+            #         used_fast_weight = OrderedDict()
+            #         for i in a:
+            #             if i[1][0] is not None:
+            #                 grads[i[0]] = i[1][0]
+            #                 used_fast_weight[i[0]] = fast_weights[i[0]]
+            #
+            #         for name, grad in zip(grads.keys(), grads.values()):
+            #             fast_weights[name] = fast_weights[name] - args.innerlr * grad
+            # val_mae = []
+            # for i, (feat, label) in enumerate(tvl.get_iterator()):
+            #     mask = select_mask(feat.shape[2])
+            #     feat = torch.FloatTensor(feat).to(device)
+            #     label = torch.FloatTensor(label).to(device)
+            #     if torch.sum(scaler.inverse_transform(label)) <= 0.001:
+            #         continue
+            #     pred = model.functional_forward(vec_pems04,
+            #                                     vec_pems07,
+            #                                     vec_pems08,
+            #                                     feat, True,
+            #                                     fast_weights,
+            #                                     bn_vars,
+            #                                     bn_training=True,
+            #                                     data_set="8")
+            #     pred = pred.transpose(1, 2).reshape((-1, feat.size(2)))
+            #     label = label.reshape((-1, label.size(2)))
+            #     mae_val, rmse_val, mape_val = masked_loss(scaler.inverse_transform(pred),
+            #                                               scaler.inverse_transform(label), maskp=mask)
+            #     val_mae.append(mae_val.item())
+            # log(np.mean(val_mae))
+            if source_weights_ma.mean() <= best:
                 best = source_weights_ma.mean().cpu().numpy().item()
                 state = dict([('model', copy.deepcopy(model.state_dict())),
                               ('optim', copy.deepcopy(optimizer.state_dict())),
