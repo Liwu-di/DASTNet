@@ -1296,7 +1296,7 @@ def model_train(args, model, optimizer, train_dataloader, val_dataloader, test_d
                     if mask_virtual[p][q]:
                         shows[p][q] = source_weights_ma[count]
                         count = count + 1
-            heatmap = seaborn.heatmap(shows, annot=True)
+            heatmap = seaborn.heatmap(shows)
             fig = heatmap.get_figure()
             fig.savefig(local_path_generate("", "{}".format(str(epoch)), ".png" ))
             fig.show()
