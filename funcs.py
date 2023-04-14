@@ -737,9 +737,9 @@ def get_path(args):
     cur_dir = os.getcwd()
     if cur_dir[-2:] == 'sh':
         cur_dir = cur_dir[:-2]
-    pre_path = local_path_generate("{}{}{}{}".formatget_timestamp(split="-"),
+    pre_path = local_path_generate("{}{}{}{}".format(get_timestamp(split="-"),
                                    args.vec_dim, args.dataname, args.datatype(),
-                                   create_folder_only=True)
+                                   create_folder_only=True))
 
     pems04_emb_path = os.path.join('{}'.format(cur_dir + os.path.sep + pre_path), 'embeddings', 'node2vec', 'pems04',
                                    '{}_vecdim.pkl'.format(args.vec_dim))
