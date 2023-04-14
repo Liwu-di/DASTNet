@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 from .data import MyDataLoader
-
+from PaperCrawlerUtil.common_util import log
 class StandardScaler:
     """
     Standard the input
@@ -513,7 +513,7 @@ def get_target_loader(args):
     train_X, train_Y, val_X, val_Y, test_X, test_Y, max_speed, scaler = load_graphdata_channel1(args, "", False,
                                                                                                 None,
                                                                                                 visualize=False)
-    print([i.shape for i in [train_X, train_Y, val_X, val_Y, test_X, test_Y]])
+    log([i.shape for i in [train_X, train_Y, val_X, val_Y, test_X, test_Y]])
     ttld = MyDataLoader(torch.FloatTensor(train_X), torch.FloatTensor(train_Y),
                                     batch_size=args.batch_size)
     tvld = MyDataLoader(torch.FloatTensor(val_X), torch.FloatTensor(val_Y), batch_size=args.batch_size)

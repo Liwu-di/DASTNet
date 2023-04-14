@@ -1,5 +1,6 @@
 import random
 from gensim.models import Word2Vec
+from PaperCrawlerUtil.common_util import log
 
 
 class Node2Vec:
@@ -65,28 +66,28 @@ class Node2Vec:
 
     def train(self, is_loadmodel=False, is_loaddata=False):
         if is_loadmodel:
-            print('Load model from file')
+            log('Load model from file')
             w2v = Word2Vec.load('../models/Node2Vec.model')
             return w2v
 
         if is_loaddata:
-            print('Load data from file')
+            log('Load data from file')
             with open('../data/tencent_walk_node2vec.txt', 'r') as f:
                 sts = f.read()
                 sentenses = eval(sts)
         else:
-            print('Random walk to get training data...')
+            log('Random walk to get training data...')
             sentenses = self.sentenses()
-            print('Number of sentenses to train: ', len(sentenses))
+            log('Number of sentenses to train: ', len(sentenses))
             # with open('../data/tencent_walk_node2vec.txt', 'w') as f:
             #     f.write(str(sentenses))
 
-        print('Start training...')
+        log('Start training...')
         random.seed(616)
         w2v = Word2Vec(sentences=sentenses, vector_size=self.emb_size, window=self.window_size,  sg=1,
                        hs=1, min_count=1, batch_words=self.batch, workers=self.workers)
         # w2v.save('../models/Node2Vec.model')
-        print('Training Done.')
+        log('Training Done.')
 
         return w2v
 
