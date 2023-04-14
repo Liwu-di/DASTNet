@@ -729,3 +729,43 @@ def calculateGeoSimilarity(spoi, sroad, s_s, s_t, mask_s, tpoi, troad, t_s, t_t,
                 sim[i][j] = 1.0 / sim[i][j] if sim[i][j] - 0 > 0.00001 else 0
 
     return min_max_normalize(sim)[0]
+
+
+
+
+def get_path(args):
+    cur_dir = os.getcwd()
+    if cur_dir[-2:] == 'sh':
+        cur_dir = cur_dir[:-2]
+    pre_path = local_path_generate("{}{}{}{}".formatget_timestamp(split="-"),
+                                   args.vec_dim, args.dataname, args.datatype(),
+                                   create_folder_only=True)
+
+    pems04_emb_path = os.path.join('{}'.format(cur_dir + os.path.sep + pre_path), 'embeddings', 'node2vec', 'pems04',
+                                   '{}_vecdim.pkl'.format(args.vec_dim))
+    pems07_emb_path = os.path.join('{}'.format(cur_dir + os.path.sep + pre_path), 'embeddings', 'node2vec', 'pems07',
+                                   '{}_vecdim.pkl'.format(args.vec_dim))
+    pems08_emb_path = os.path.join('{}'.format(cur_dir + os.path.sep + pre_path), 'embeddings', 'node2vec', 'pems08',
+                                   '{}_vecdim.pkl'.format(args.vec_dim))
+    v_p = os.path.join('{}'.format(cur_dir + os.path.sep + pre_path), 'embeddings', 'node2vec', 'vc',
+                       '{}{}{}{}{}{}{}_vecdim.pkl'.format(get_timestamp(split="-"), args.vec_dim, args.dataname,
+                                                          args.datatype,
+                                                          str(args.s1_rate).replace(".", ""),
+                                                          str(args.s2_rate).replace(".", ""),
+                                                          str(args.s3_rate).replace(".", ""),
+                                                          ))
+
+    pretrain_model_path = os.path.join('{}'.format(cur_dir + os.path.sep + pre_path), 'pretrained', 'transfer_models',
+                                       '{}'.format(args.dataset), '{}_prelen'.format(args.pre_len),
+                                       'flow_model4_{}_epoch_{}_{}_{}_{}_{}_{}{}{}{}.pkl'.format(
+                                           args.models, args.epoch, args.dataname, args.datatype,
+                                           str(args.s1_rate).replace(".", ""),
+                                           str(args.s2_rate).replace(".", ""),
+                                           str(args.s3_rate).replace(".", ""),
+                                           str(args.learning_rate),
+                                           str(args.batch_size),
+                                           str(args.split_ratio)
+                                       )
+                                       )
+
+    return pems04_emb_path, pems07_emb_path, pems08_emb_path, v_p, pretrain_model_path

@@ -1411,18 +1411,7 @@ cur_dir = os.getcwd()
 if cur_dir[-2:] == 'sh':
     cur_dir = cur_dir[:-2]
 
-pems04_emb_path = os.path.join('{}'.format(cur_dir), 'embeddings', 'node2vec', 'pems04',
-                               '{}_vecdim.pkl'.format(args.vec_dim))
-pems07_emb_path = os.path.join('{}'.format(cur_dir), 'embeddings', 'node2vec', 'pems07',
-                               '{}_vecdim.pkl'.format(args.vec_dim))
-pems08_emb_path = os.path.join('{}'.format(cur_dir), 'embeddings', 'node2vec', 'pems08',
-                               '{}_vecdim.pkl'.format(args.vec_dim))
-v_p = os.path.join('{}'.format(cur_dir), 'embeddings', 'node2vec', 'vc',
-                   '{}{}{}{}{}{}{}_vecdim.pkl'.format(args.vec_dim, args.dataname, args.datatype,
-                                                      str(args.s1_rate).replace(".", ""),
-                                                      str(args.s2_rate).replace(".", ""),
-                                                      str(args.s3_rate).replace(".", ""),
-                                                      get_timestamp(split="-")))
+pems04_emb_path, pems07_emb_path, pems08_emb_path, v_p, pretrain_model_path = get_path(args)
 
 for i in [pems04_emb_path, pems07_emb_path, pems08_emb_path, v_p]:
     a = i.split("/")
@@ -1501,25 +1490,14 @@ bak_epoch = args.epoch
 bak_val = args.val
 bak_test = args.test
 type = 'pretrain'
-pretrain_model_path = os.path.join('{}'.format(cur_dir), 'pretrained', 'transfer_models',
-                                   '{}'.format(args.dataset), '{}_prelen'.format(args.pre_len),
-                                   'flow_model4_{}_epoch_{}_{}_{}_{}_{}_{}{}{}{}.pkl'.format(
-                                       args.models, args.epoch, args.dataname, args.datatype,
-                                       str(args.s1_rate).replace(".", ""),
-                                       str(args.s2_rate).replace(".", ""),
-                                       str(args.s3_rate).replace(".", ""),
-                                       str(args.learning_rate),
-                                       str(args.batch_size),
-                                       str(args.split_ratio)
-                                   )
-                                   )
 
-a = pretrain_model_path.split("/")
+
+a = pretrain_model_path.split(os.path.sep)
 b = []
 for i in a:
     if "pkl" not in i:
         b.append(i)
-local_path_generate("/".join(b), create_folder_only=True)
+local_path_generate(os.path.sep.join(b), create_folder_only=True)
 
 vec_pems04 = vec_virtual
 adj_pems04 = adj_virtual
