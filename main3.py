@@ -313,9 +313,31 @@ else:
     print(f'Saving pems04 embedding...')
     torch.save(vec_pems04.cpu(), pems04_emb_path)
 
+if os.path.exists(pems07_emb_path):
+    print(f'Loading pems07 embedding...')
+    vec_pems07 = torch.load(pems07_emb_path, map_location='cpu')
+    vec_pems07 = vec_pems07.to(device)
+else:
+    print(f'Generating pems07 embedding...')
+    args.dataset = '7'
+    vec_pems07, _ = generate_vector(adj_pems07.cpu().numpy(), args)
+    vec_pems07 = vec_pems07.to(device)
+    print(f'Saving pems07 embedding...')
+    torch.save(vec_pems07.cpu(), pems07_emb_path)
 
+if os.path.exists(pems08_emb_path):
+    print(f'Loading pems08 embedding...')
+    vec_pems08 = torch.load(pems08_emb_path, map_location='cpu')
+    vec_pems08 = vec_pems08.to(device)
+else:
+    print(f'Generating pems08 embedding...')
+    args.dataset = '8'
+    vec_pems08, _ = generate_vector(adj_pems08.cpu().numpy(), args)
+    vec_pems08 = vec_pems08.to(device)
+    print(f'Saving pems08 embedding...')
+    torch.save(vec_pems08.cpu(), pems08_emb_path)
 
-print(f'Successfully load embeddings, 4: {vec_pems04.shape}')
+print(f'Successfully load embeddings, 4: {vec_pems04.shape}, 7: {vec_pems07.shape}, 8: {vec_pems08.shape}')
 
 domain_criterion = torch.nn.NLLLoss()
 domain_classifier = Domain_classifier_DG(num_class=3, encode_dim=args.enc_dim)
@@ -345,7 +367,7 @@ for i in a:
     if "pkl" not in i:
         b.append(i)
 local_path_generate("/".join(b), create_folder_only=True)
-args.dataset = "8"
+
 if os.path.exists(pretrain_model_path):
     print(f'Loading pretrained model at {pretrain_model_path}')
     state = torch.load(pretrain_model_path, map_location='cpu')
