@@ -243,6 +243,10 @@ def load_data(args, scaler=None, visualize=False, distribution=False, cut=False)
         feat_dir = DATA_PATHS['8']['feat']
         adj_dir = DATA_PATHS['8']['adj']
         num_of_vertices = 420
+    elif args.dataset == "9":
+        feat_dir = DATA_PATHS['8']['feat']
+        adj_dir = DATA_PATHS['8']['adj']
+        num_of_vertices = 1024
 
     train_X, train_Y, val_X, val_Y, test_X, test_Y, max_speed, scaler = load_graphdata_channel1(args, time, scaler, visualize=visualize, cut=cut)
     train_dataloader = MyDataLoader(torch.FloatTensor(train_X), torch.FloatTensor(train_Y),
@@ -328,6 +332,8 @@ def load_graphdata_channel1(args, feat_dir, time, scaler=None, visualize=False, 
         city = "CHI"
     elif args.dataset == "4":
         city = "NY"
+    elif args.dataset == "9":
+        city = "BJ"
     dirs = "./data/{}/{}{}_{}.npy".format(city, args.dataname, city, args.datatype)
     file_data = np.load(dirs)
     data = file_data.reshape((file_data.shape[0], file_data.shape[1] * file_data.shape[2]))
