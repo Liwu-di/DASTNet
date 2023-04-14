@@ -345,7 +345,7 @@ for i in a:
     if "pkl" not in i:
         b.append(i)
 local_path_generate("/".join(b), create_folder_only=True)
-
+args.dataset = "8"
 if os.path.exists(pretrain_model_path):
     print(f'Loading pretrained model at {pretrain_model_path}')
     state = torch.load(pretrain_model_path, map_location='cpu')
