@@ -141,8 +141,9 @@ def train(dur, model, optimizer, total_step, start_step):
         mae_train, rmse_train, mape_train = masked_loss(scaler.inverse_transform(pred), scaler.inverse_transform(label), maskp=mask)
 
         if type == 'pretrain':
-            if i == 1:
-                log(mae_train, domain_loss)
+            log(mae_train, domain_loss)
+            # if i == 1:
+            #     log(mae_train, domain_loss)
             loss = mae_train + args.beta * (args.theta * domain_loss)
         elif type == 'fine-tune':
             loss = mae_train
@@ -549,7 +550,7 @@ if os.path.exists(pretrain_model_path):
 else:
     print(f'No existing pretrained model at {pretrain_model_path}')
     args.val = args.test = False
-    datasets = ["4", "7", "8", "9"]
+    datasets = ["9", "4", "7", "8"]
     dataset_bak = args.dataset
     labelrate_bak = args.labelrate
     args.labelrate = 100
