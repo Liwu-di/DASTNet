@@ -102,7 +102,13 @@ def train(dur, model, optimizer, total_step, start_step):
         optimizer.zero_grad()
         if args.model not in ['DCRNN', 'STGCN', 'HA']:
             if type == 'pretrain':
-                pred, shared_pems04_feat, shared_pems07_feat, shared_pems08_feat, shared_pems09_feat = model(vec_pems04, vec_pems07, vec_pems08, vec_pems09, feat, False, args.need_road)
+                pred, shared_pems04_feat, shared_pems07_feat, shared_pems08_feat, shared_pems09_feat = model(vec_pems04,
+                                                                                                             vec_pems07,
+                                                                                                             vec_pems08,
+                                                                                                             vec_pems09,
+                                                                                                             feat,
+                                                                                                             False,
+                                                                                                             args.need_road)
             elif type == 'fine-tune':
                 pred = model(vec_pems04, vec_pems07, vec_pems08, vec_pems09, feat, False, args.need_road)
 
@@ -139,7 +145,8 @@ def train(dur, model, optimizer, total_step, start_step):
         if type == 'pretrain':
             train_correct = pems04_correct + pems08_correct + pems07_correct + pems09_correct
 
-        mae_train, rmse_train, mape_train = masked_loss(scaler.inverse_transform(pred), scaler.inverse_transform(label), maskp=mask)
+        mae_train, rmse_train, mape_train = masked_loss(scaler.inverse_transform(pred), scaler.inverse_transform(label),
+                                                        maskp=mask)
 
         if type == 'pretrain':
             if i == 1:
@@ -271,6 +278,8 @@ np.random.seed(args.seed)
 if args.labelrate > 100:
     args.labelrate = 100
 from funcs import *
+
+
 def load_all_adj(device):
     dirs = "./data/{}/{}_roads.npy"
     ny, chi, dc, bj = None, None, None, None
@@ -297,7 +306,9 @@ def load_all_adj(device):
         elif t.shape[0] == 1024:
             bj = t
 
-    return torch.tensor(ny).to(device), torch.tensor(chi).to(device), torch.tensor(dc).to(device), torch.tensor(bj).to(device)
+    return torch.tensor(ny).to(device), torch.tensor(chi).to(device), torch.tensor(dc).to(device), torch.tensor(bj).to(
+        device)
+
 
 adj_pems04, adj_pems07, adj_pems08, adj_pems09 = load_all_adj(device)
 vec_pems04 = vec_pems07 = vec_pems08 = vec_pems09 = None, None, None, None
@@ -383,8 +394,8 @@ else:
     print(f'Saving pems08 embedding...')
     torch.save(vec_pems09.cpu(), pems09_emb_path)
 
-
-print(f'Successfully load embeddings, 4: {vec_pems04.shape}, 7: {vec_pems07.shape}, 8: {vec_pems08.shape}, 9:{vec_pems09.shape}')
+print(
+    f'Successfully load embeddings, 4: {vec_pems04.shape}, 7: {vec_pems07.shape}, 8: {vec_pems08.shape}, 9:{vec_pems09.shape}')
 
 domain_criterion = torch.nn.NLLLoss()
 domain_classifier = Domain_classifier_DG(num_class=4, encode_dim=args.enc_dim)
@@ -420,8 +431,10 @@ for i in a:
         b.append(i)
 local_path_generate(os.path.sep.join(b), create_folder_only=True)
 
+
 class DASTNet(nn.Module):
-    def __init__(self, input_dim, hidden_dim, encode_dim, device, batch_size, etype, pre_len, dataset, ft_dataset, adj_pems04, adj_pems07, adj_pems08, adj_pems09):
+    def __init__(self, input_dim, hidden_dim, encode_dim, device, batch_size, etype, pre_len, dataset, ft_dataset,
+                 adj_pems04, adj_pems07, adj_pems08, adj_pems09):
         super(DASTNet, self).__init__()
         self.dataset = dataset
         self.finetune_dataset = ft_dataset
@@ -434,14 +447,22 @@ class DASTNet(nn.Module):
         self.encode_dim = encode_dim
         self.device = device
 
-        self.pems04_featExtractor = Extractor_N2V(input_dim, hidden_dim, encode_dim, device, batch_size, etype).to(device)
-        self.pems07_featExtractor = Extractor_N2V(input_dim, hidden_dim, encode_dim, device, batch_size, etype).to(device)
-        self.pems08_featExtractor = Extractor_N2V(input_dim, hidden_dim, encode_dim, device, batch_size, etype).to(device)
-        self.pems09_featExtractor = Extractor_N2V(input_dim, hidden_dim, encode_dim, device, batch_size, etype).to(device)
-        self.shared_pems04_featExtractor = Extractor_N2V(input_dim, hidden_dim, encode_dim, device, batch_size, etype).to(device)
-        self.shared_pems07_featExtractor = Extractor_N2V(input_dim, hidden_dim, encode_dim, device, batch_size, etype).to(device)
-        self.shared_pems08_featExtractor = Extractor_N2V(input_dim, hidden_dim, encode_dim, device, batch_size, etype).to(device)
-        self.shared_pems09_featExtractor = Extractor_N2V(input_dim, hidden_dim, encode_dim, device, batch_size, etype).to(device)
+        self.pems04_featExtractor = Extractor_N2V(input_dim, hidden_dim, encode_dim, device, batch_size, etype).to(
+            device)
+        self.pems07_featExtractor = Extractor_N2V(input_dim, hidden_dim, encode_dim, device, batch_size, etype).to(
+            device)
+        self.pems08_featExtractor = Extractor_N2V(input_dim, hidden_dim, encode_dim, device, batch_size, etype).to(
+            device)
+        self.pems09_featExtractor = Extractor_N2V(input_dim, hidden_dim, encode_dim, device, batch_size, etype).to(
+            device)
+        self.shared_pems04_featExtractor = Extractor_N2V(input_dim, hidden_dim, encode_dim, device, batch_size,
+                                                         etype).to(device)
+        self.shared_pems07_featExtractor = Extractor_N2V(input_dim, hidden_dim, encode_dim, device, batch_size,
+                                                         etype).to(device)
+        self.shared_pems08_featExtractor = Extractor_N2V(input_dim, hidden_dim, encode_dim, device, batch_size,
+                                                         etype).to(device)
+        self.shared_pems09_featExtractor = Extractor_N2V(input_dim, hidden_dim, encode_dim, device, batch_size,
+                                                         etype).to(device)
 
         self.speed_predictor = VGRU_FEAT(hidden_dim=hidden_dim, output_dim=pre_len, encode_dim=encode_dim).to(device)
         self.pems04_linear = nn.Linear(hidden_dim, pre_len, )
@@ -510,7 +531,8 @@ class DASTNet(nn.Module):
             if self.dataset == '4' or self.dataset == 'ny':
                 shared_pems04_feat = self.shared_pems04_featExtractor(vec_pems04, self.pems04_adj).to(self.device)
                 pems04_feat = self.pems04_featExtractor(vec_pems04, self.pems04_adj).to(self.device)
-                pems04_feat = self.combine_pems04_linear(self.private_pems04_linear(pems04_feat) + self.shared_pems04_linear(shared_pems04_feat))
+                pems04_feat = self.combine_pems04_linear(
+                    self.private_pems04_linear(pems04_feat) + self.shared_pems04_linear(shared_pems04_feat))
                 h_pems04 = pems04_feat.expand(self.batch_size, self.pems04_adj.shape[0], self.encode_dim)
                 pred = self.speed_predictor(feat, h_pems04, need_road)
                 pred = self.pems04_linear(pred)
@@ -518,7 +540,8 @@ class DASTNet(nn.Module):
             elif self.dataset == '7' or self.dataset == 'chi':
                 shared_pems07_feat = self.shared_pems07_featExtractor(vec_pems07, self.pems07_adj).to(self.device)
                 pems07_feat = self.pems07_featExtractor(vec_pems07, self.pems07_adj).to(self.device)
-                pems07_feat = self.combine_pems07_linear(self.private_pems07_linear(pems07_feat) + self.shared_pems07_linear(shared_pems07_feat))
+                pems07_feat = self.combine_pems07_linear(
+                    self.private_pems07_linear(pems07_feat) + self.shared_pems07_linear(shared_pems07_feat))
                 h_pems07 = pems07_feat.expand(self.batch_size, self.pems07_adj.shape[0], self.encode_dim)
                 pred = self.speed_predictor(feat, h_pems07, need_road)
                 pred = self.pems07_linear(pred)
@@ -526,7 +549,8 @@ class DASTNet(nn.Module):
             elif self.dataset == '8' or self.dataset == 'dc':
                 shared_pems08_feat = self.shared_pems08_featExtractor(vec_pems08, self.pems08_adj).to(self.device)
                 pems08_feat = self.pems08_featExtractor(vec_pems08, self.pems08_adj).to(self.device)
-                pems08_feat = self.combine_pems08_linear(self.private_pems08_linear(pems08_feat) + self.shared_pems08_linear(shared_pems08_feat))
+                pems08_feat = self.combine_pems08_linear(
+                    self.private_pems08_linear(pems08_feat) + self.shared_pems08_linear(shared_pems08_feat))
                 h_pems08 = pems08_feat.expand(self.batch_size, self.pems08_adj.shape[0], self.encode_dim)
                 pred = self.speed_predictor(feat, h_pems08, need_road)
                 pred = self.pems08_linear(pred)
@@ -535,13 +559,15 @@ class DASTNet(nn.Module):
             elif self.dataset == '9' or self.dataset == 'bj':
                 shared_pems09_feat = self.shared_pems09_featExtractor(vec_pems09, self.pems09_adj).to(self.device)
                 pems09_feat = self.pems09_featExtractor(vec_pems09, self.pems09_adj).to(self.device)
-                pems09_feat = self.combine_pems09_linear(self.private_pems09_linear(pems09_feat) + self.shared_pems09_linear(shared_pems09_feat))
+                pems09_feat = self.combine_pems09_linear(
+                    self.private_pems09_linear(pems09_feat) + self.shared_pems09_linear(shared_pems09_feat))
                 h_pems09 = pems09_feat.expand(self.batch_size, self.pems09_adj.shape[0], self.encode_dim)
                 pred = self.speed_predictor(feat, h_pems09, need_road)
                 pred = self.pems09_linear(pred)
                 pred = pred.reshape((self.batch_size, self.pems09_adj.shape[0], -1))
 
             return pred
+
 
 args.dataset = "8"
 if os.path.exists(pretrain_model_path):
@@ -575,11 +601,17 @@ else:
             g = vec_pems09
 
         args.dataset = dataset
+        if args.cut_data == 3312:
+            if args.dataset != "9":
+                args.cut_data = 8784
+            else:
+                args.cut_data = 3312
         train_dataloader, val_dataloader, test_dataloader, adj, max_speed, scaler = load_data(args)
         model = DASTNet(input_dim=args.vec_dim, hidden_dim=args.hidden_dim, encode_dim=args.enc_dim,
                         device=device, batch_size=args.batch_size, etype=args.etype, pre_len=args.pre_len,
                         dataset=args.dataset, ft_dataset=dataset_bak,
-                        adj_pems04=adj_pems04, adj_pems07=adj_pems07, adj_pems08=adj_pems08, adj_pems09=adj_pems09).to(device)
+                        adj_pems04=adj_pems04, adj_pems07=adj_pems07, adj_pems08=adj_pems08, adj_pems09=adj_pems09).to(
+            device)
         optimizer = optim.SGD([{'params': model.parameters()},
                                {'params': domain_classifier.parameters()}], lr=args.learning_rate, momentum=0.8)
 
