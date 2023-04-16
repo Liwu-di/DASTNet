@@ -141,9 +141,8 @@ def train(dur, model, optimizer, total_step, start_step):
         mae_train, rmse_train, mape_train = masked_loss(scaler.inverse_transform(pred), scaler.inverse_transform(label), maskp=mask)
 
         if type == 'pretrain':
-            log(mae_train, domain_loss)
-            # if i == 1:
-            #     log(mae_train, domain_loss)
+            if i == 1:
+                log(mae_train, domain_loss)
             loss = mae_train + args.beta * (args.theta * domain_loss)
         elif type == 'fine-tune':
             loss = mae_train
@@ -223,7 +222,7 @@ def model_train(args, model, optimizer):
 
     step_per_epoch = train_dataloader.get_num_batch()
     total_step = 200 * step_per_epoch
-
+    cnt = 0
     while epoch <= args.epoch:
         start_step = epoch * step_per_epoch
         if type == 'fine-tune' and epoch > 1000:
