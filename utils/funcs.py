@@ -466,7 +466,7 @@ def masked_loss(y_pred, y_true, maskp=None, weight=None):
         mask = (torch.ones(mask.shape) * 0.01).to(mask.device)
     mae_loss = torch.abs(y_pred - y_true)
     mse_loss = torch.square(y_pred - y_true)
-    y_true = torch.where(y_true.abs() < torch.tensor(1e-4, dtype=y_true.dtype, device=y_true.device), torch.tensor(0, dtype=y_true.dtype, device=y_true.device), y_true)
+    y_true = torch.where(y_true.abs() < torch.tensor(1e-6, dtype=y_true.dtype, device=y_true.device), torch.tensor(0, dtype=y_true.dtype, device=y_true.device), y_true)
     mape_loss = mae_loss / y_true
     mape_loss = torch.where(torch.isinf(mape_loss), torch.tensor(0, dtype=y_true.dtype, device=y_true.device), mape_loss)
     if maskp is not None:
