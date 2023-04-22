@@ -286,11 +286,12 @@ if cur_dir[-2:] == 'sh':
     cur_dir = cur_dir[:-2]
 
 pems04_emb_path = os.path.join('{}'.format(cur_dir), 'embeddings', 'node2vec', 'pems04',
-                               '{}_vecdim.pkl'.format(args.vec_dim))
+                               '{}{}_vecdim.pkl'.format(args.vec_dim, args.datatype))
 pems07_emb_path = os.path.join('{}'.format(cur_dir), 'embeddings', 'node2vec', 'pems07',
-                               '{}_vecdim.pkl'.format(args.vec_dim))
+                               '{}{}_vecdim.pkl'.format(args.vec_dim, args.datatype))
 pems08_emb_path = os.path.join('{}'.format(cur_dir), 'embeddings', 'node2vec', 'pems08',
-                               '{}_vecdim.pkl'.format(args.vec_dim))
+                               '{}{}_vecdim.pkl'.format(args.vec_dim, args.datatype))
+
 
 for i in [pems04_emb_path, pems07_emb_path, pems08_emb_path]:
     a = i.split("/")
