@@ -61,6 +61,7 @@ def arg_parse(parser):
     parser.add_argument("--need_remark", type=int, default=0)
     parser.add_argument("--fine_epoch", type=int, default=80)
     parser.add_argument("--need_road", action='store_false', default=True, help='test')
+    parser.add_argument("--cut_data", type=int, default=3312)
     return parser.parse_args()
 
 
