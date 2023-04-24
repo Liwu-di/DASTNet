@@ -472,7 +472,7 @@ def masked_loss(y_pred, y_true, maskp=None, weight=None):
     mae_pe = mae_loss[:, torch.from_numpy(maskp).to(y_pred.device).reshape((-1))]
     ytrue_pe = y_true[:, torch.from_numpy(maskp).to(y_pred.device).reshape((-1))]
     mape_loss = mae_pe / ytrue_pe
-    mape_loss = torch.where(mape_loss.abs() > torch.tensor(10, dtype=mape_loss.dtype, device=y_true.device),
+    mape_loss = torch.where(mape_loss.abs() > torch.tensor(1, dtype=mape_loss.dtype, device=y_true.device),
                          torch.tensor(0, dtype=mape_loss.dtype, device=mape_loss.device), mape_loss)
     # mape_loss = mae_loss / y_true.abs()
     #mape_loss = torch.where(torch.isinf(mape_loss), torch.tensor(0, dtype=y_true.dtype, device=y_true.device), mape_loss)
