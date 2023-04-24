@@ -461,6 +461,7 @@ def masked_loss(y_pred, y_true, maskp=None, weight=None):
 
     mask_true = (y_true > 0.01).float()
     mask_pred = (y_pred > 0.01).float()
+    nz = torch.count_nonzero(y_true)
     mask = torch.mul(mask_true, mask_pred)
     if mask.mean() > 1e-6:
         mask /= mask.mean()
@@ -483,7 +484,7 @@ def masked_loss(y_pred, y_true, maskp=None, weight=None):
         mae_loss = mae_loss[:, mmmm]
         mae_loss = torch.mul(mae_loss.reshape(y_true.shape[0], -1), weight.repeat((y_true.shape[0], 1)))
     mse_loss = mse_loss[:, torch.from_numpy(maskp).to(y_pred.device).reshape((-1))]
-    mape_loss = mape_loss.sum() / torch.count_nonzero(y_true)
+    mape_loss = mape_loss.sum() / nz
     mae_loss[mae_loss != mae_loss] = 0
     mse_loss[mse_loss != mse_loss] = 0
     mape_loss[mape_loss != mape_loss] = 0
