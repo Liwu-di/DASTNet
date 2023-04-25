@@ -469,7 +469,7 @@ def masked_loss(y_pred, y_true, maskp=None, weight=None):
         mask = (torch.ones(mask.shape) * 0.01).to(mask.device)
     mae_loss = torch.abs(y_pred - y_true)
     mse_loss = torch.square(y_pred - y_true)
-    #y_true = torch.where(y_true.abs() < torch.tensor(0.01, dtype=y_true.dtype, device=y_true.device), torch.tensor(0, dtype=y_true.dtype, device=y_true.device), y_true)
+    y_true = torch.where(y_true.abs() < torch.tensor(1e-6, dtype=y_true.dtype, device=y_true.device), torch.tensor(0, dtype=y_true.dtype, device=y_true.device), y_true)
     # a = []
     # for i in range(10, 100, 5):
     #     y_true = y_true + (torch.ones(y_true.shape) * float(i / 100)).to(y_pred.device)
@@ -480,13 +480,13 @@ def masked_loss(y_pred, y_true, maskp=None, weight=None):
     # if flag:
     #     print(a)
     #     flag = False
-    y_true = y_true + (torch.ones(y_true.shape) * float(5)).to(y_pred.device)
-    mae_pe = mae_loss[:, torch.from_numpy(maskp).to(y_pred.device).reshape((-1))]
-    ytrue_pe = y_true[:, torch.from_numpy(maskp).to(y_pred.device).reshape((-1))]
-    mape_loss = mae_pe / ytrue_pe.abs()
-    # mape_loss = torch.where(mape_loss.abs() > torch.tensor(1, dtype=mape_loss.dtype, device=y_true.device),
-    #                      torch.tensor(0, dtype=mape_loss.dtype, device=mape_loss.device), mape_loss)
-    # mape_loss = mae_loss / y_true.abs()
+    # y_true = y_true + (torch.ones(y_true.shape) * float(5)).to(y_pred.device)
+    # mae_pe = mae_loss[:, torch.from_numpy(maskp).to(y_pred.device).reshape((-1))]
+    # ytrue_pe = y_true[:, torch.from_numpy(maskp).to(y_pred.device).reshape((-1))]
+    # mape_loss = mae_pe / ytrue_pe.abs()
+    mape_loss = torch.where(mape_loss.abs() > torch.tensor(1, dtype=mape_loss.dtype, device=y_true.device),
+                         torch.tensor(0, dtype=mape_loss.dtype, device=mape_loss.device), mape_loss)
+    mape_loss = mae_loss / y_true.abs()
     mape_loss = torch.where(torch.isinf(mape_loss), torch.tensor(0, dtype=y_true.dtype, device=y_true.device), mape_loss)
     if maskp is not None:
         mask = maskp
