@@ -480,7 +480,7 @@ def masked_loss(y_pred, y_true, maskp=None, weight=None):
     # if flag:
     #     print(a)
     #     flag = False
-    y_true = y_true + (torch.ones(y_true.shape) * float(3)).to(y_pred.device)
+    y_true = y_true + (torch.ones(y_true.shape) * float(4)).to(y_pred.device)
     mae_pe = mae_loss[:, torch.from_numpy(maskp).to(y_pred.device).reshape((-1))]
     ytrue_pe = y_true[:, torch.from_numpy(maskp).to(y_pred.device).reshape((-1))]
     mape_loss = mae_pe / ytrue_pe.abs()
