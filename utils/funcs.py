@@ -469,15 +469,15 @@ def masked_loss(y_pred, y_true, maskp=None, weight=None):
         mask = (torch.ones(mask.shape) * 0.01).to(mask.device)
     mae_loss = torch.abs(y_pred - y_true)
     mse_loss = torch.square(y_pred - y_true)
-    y_true = torch.where(y_true.abs() < torch.tensor(0.0000000000001, dtype=y_true.dtype, device=y_true.device), torch.tensor(0, dtype=y_true.dtype, device=y_true.device), y_true)
-    # a = []
-    # for i in range(1, 6, 1):
-    #     y_true = y_true + (torch.ones(y_true.shape) * i).to(y_pred.device)
-    #     mae_pe = mae_loss[:, torch.from_numpy(maskp).to(y_pred.device).reshape((-1))]
-    #     ytrue_pe = y_true[:, torch.from_numpy(maskp).to(y_pred.device).reshape((-1))]
-    #     mape_loss = mae_pe / ytrue_pe.abs()
-    #     a.append(mape_loss.mean().item())
-    # print(a)
+    #y_true = torch.where(y_true.abs() < torch.tensor(0.01, dtype=y_true.dtype, device=y_true.device), torch.tensor(0, dtype=y_true.dtype, device=y_true.device), y_true)
+    a = []
+    for i in range(0.01, 6, 0.01):
+        y_true = y_true + (torch.ones(y_true.shape) * i).to(y_pred.device)
+        mae_pe = mae_loss[:, torch.from_numpy(maskp).to(y_pred.device).reshape((-1))]
+        ytrue_pe = y_true[:, torch.from_numpy(maskp).to(y_pred.device).reshape((-1))]
+        mape_loss = mae_pe / ytrue_pe.abs()
+        a.append(mape_loss.mean().item())
+    print(a)
     mae_pe = mae_loss[:, torch.from_numpy(maskp).to(y_pred.device).reshape((-1))]
     ytrue_pe = y_true[:, torch.from_numpy(maskp).to(y_pred.device).reshape((-1))]
     mape_loss = mae_pe / ytrue_pe.abs()
