@@ -476,7 +476,7 @@ def masked_loss(y_pred, y_true, maskp=None, weight=None):
         mae_pe = mae_loss[:, torch.from_numpy(maskp).to(y_pred.device).reshape((-1))]
         ytrue_pe = y_true[:, torch.from_numpy(maskp).to(y_pred.device).reshape((-1))]
         mape_loss = mae_pe / ytrue_pe.abs()
-        a.append(mape_loss)
+        a.append(mape_loss.mean())
     print(a)
     mae_pe = mae_loss[:, torch.from_numpy(maskp).to(y_pred.device).reshape((-1))]
     ytrue_pe = y_true[:, torch.from_numpy(maskp).to(y_pred.device).reshape((-1))]
