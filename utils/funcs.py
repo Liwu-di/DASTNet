@@ -415,6 +415,7 @@ def load_graphdata_channel1(args, feat_dir, time, scaler=None, visualize=False, 
         min_speed = min(min_xtrain, min_ytrain, min_xval, min_yval, min_xtest, min_ytest)
 
         # scaler = StandardScaler(mean=train_X[..., 0].mean(), std=train_X[..., 0].std())
+        log(train_X.mean(), train_X.std())
         scaler = StandardScaler(mean=train_X.mean(), std=train_X.std())
 
         train_X = scaler.transform(train_X)
