@@ -126,10 +126,10 @@ def train(dur, model, optimizer, total_step, start_step):
         if type == 'pretrain':
             train_correct = pems04_correct + pems08_correct
 
-        for i in range(len(scaler.inverse_transform(label).flatten())):
-            if 1e-50 < scaler.inverse_transform(label).flatten()[i] < 1e-6:
-                log("T or F: ", 1e-50 < scaler.inverse_transform(label).flatten()[i] < 1e-6)
-                log("Val: ", scaler.inverse_transform(label).flatten()[i], label.flatten()[i])
+        # for i in range(len(scaler.inverse_transform(label).flatten())):
+        #     if 1e-50 < scaler.inverse_transform(label).flatten()[i] < 1e-6:
+        #         log("T or F: ", 1e-50 < scaler.inverse_transform(label).flatten()[i] < 1e-6)
+        #         log("Val: ", scaler.inverse_transform(label).flatten()[i], label.flatten()[i])
 
         mae_train, rmse_train, mape_train = masked_loss(scaler.inverse_transform(pred), scaler.inverse_transform(label),
                                                         maskp=mask)
