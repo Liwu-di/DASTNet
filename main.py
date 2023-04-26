@@ -130,7 +130,7 @@ def train(dur, model, optimizer, total_step, start_step):
                 log("Val: ", scaler.inverse_transform(label).flatten()[i], label.flatten()[i])
 
         mae_train, rmse_train, mape_train = masked_loss(scaler.inverse_transform(pred), scaler.inverse_transform(label),
-                                                        maskp=mask)
+                                                        maskp=mask, maxs=maxs, mins=mins)
 
         if type == 'pretrain':
             if i == 1:
@@ -164,7 +164,7 @@ def train(dur, model, optimizer, total_step, start_step):
         pred = pred.transpose(1, 2).reshape((-1, feat.size(2)))
         label = label.reshape((-1, label.size(2)))
         mae_val, rmse_val, mape_val = masked_loss(scaler.inverse_transform(pred), scaler.inverse_transform(label),
-                                                  maskp=mask)
+                                                  maskp=mask, maxs=maxs, mins=mins)
         val_mae.append(mae_val.item())
         val_rmse.append(rmse_val.item())
 
@@ -192,7 +192,7 @@ def test():
         pred = pred.transpose(1, 2).reshape((-1, feat.size(2)))
         label = label.reshape((-1, label.size(2)))
         mae_test, rmse_test, mape_test = masked_loss(scaler.inverse_transform(pred), scaler.inverse_transform(label),
-                                                     maskp=mask)
+                                                     maskp=mask, maxs=maxs, mins=mins)
 
         test_mae.append(mae_test.item())
         test_rmse.append(rmse_test.item())
