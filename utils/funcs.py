@@ -494,7 +494,6 @@ def masked_loss(y_pred, y_true, maskp=None, weight=None):
     mae_pe = mae_loss[:, torch.from_numpy(maskp).to(y_pred.device).reshape((-1))]
     ytrue_pe = y_true[:, torch.from_numpy(maskp).to(y_pred.device).reshape((-1))]
     mape_loss = mae_pe / ytrue_pe.abs()
-
     mape_loss = torch.where(torch.isinf(mape_loss), torch.tensor(0, dtype=y_true.dtype, device=y_true.device),
                             mape_loss)
     if maskp is not None:
@@ -510,9 +509,6 @@ def masked_loss(y_pred, y_true, maskp=None, weight=None):
     mae_loss[mae_loss != mae_loss] = 0
     mse_loss[mse_loss != mse_loss] = 0
     mape_loss[mape_loss != mape_loss] = 0
-    for i in range(len(mape_loss.flatten())):
-        if 100000 < mape_loss.flatten()[i]:
-            log("Val: ", mape_loss.flatten()[i], mae_pe.flatten()[i], ytrue_pe.flatten()[i])
     return mae_loss.mean(), torch.sqrt(mse_loss.mean()), mape_loss.mean()
 
 
