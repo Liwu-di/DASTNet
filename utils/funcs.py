@@ -494,7 +494,7 @@ def masked_loss(y_pred, y_true, maskp=None, weight=None):
     mae_pe = mae_loss[:, torch.from_numpy(maskp).to(y_pred.device).reshape((-1))]
     ytrue_pe = y_true[:, torch.from_numpy(maskp).to(y_pred.device).reshape((-1))]
     mape_loss = mae_pe / ytrue_pe.abs()
-    for i in range(y_true.flatten()):
+    for i in range(len(y_true.flatten())):
         if 1e-50 < y_true.flatten()[i] < 1e-6:
             log("T or F: ", 1e-50 < y_true.flatten()[i] < 1e-6)
             log("Val: ", y_true.flatten()[i])
