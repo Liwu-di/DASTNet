@@ -196,9 +196,7 @@ def test():
         label = label.reshape((-1, label.size(2)))
         mae_test, rmse_test, mape_test = masked_loss(scaler.inverse_transform(pred), scaler.inverse_transform(label),
                                                      maskp=mask, maxs=maxs, mins=mins)
-        mae_test = mae_test * (maxs - mins)
-        rmse_test = rmse_test * (maxs - mins)
-        mape_test = mape_test * (maxs - mins)
+
         test_mae.append(mae_test.item())
         test_rmse.append(rmse_test.item())
         test_mape.append(mape_test.item())
