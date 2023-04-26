@@ -6,6 +6,26 @@ from .data import MyDataLoader
 from PaperCrawlerUtil.common_util import log
 
 
+def min_max_normalize(data, percentile = 0.999):
+    """
+    归一化到（0,1）
+    :param data:
+    :param percentile:
+    :return:
+    """
+    # data 展开成一维
+    # data 大于0.999分位的值作为最大值，大于该值的以0.999分位为准
+    sl = sorted(data.flatten())
+    max_val = sl[int(len(sl) * percentile)]
+    min_val = max(0, sl[0])
+    data[data > max_val] = max_val
+    data -= min_val
+    # data = data / (max_val - min_val)
+    data /= (max_val - min_val)
+    return data, max_val, min_val
+
+
+
 class StandardScaler:
     """
     Standard the input
@@ -16,11 +36,12 @@ class StandardScaler:
         self.std = std
 
     def transform(self, data):
-        return (data - self.mean) / self.std
+        #return (data - self.mean) / self.std
+        return data
 
     def inverse_transform(self, data):
-        return (data * self.std) + self.mean
-
+        #return (data * self.std) + self.mean
+        return data
 
 def add_self_loop(adj):
     # add self loop to an adjacency
@@ -477,15 +498,9 @@ def load_graphdata_channel1(args, feat_dir, time, scaler=None, visualize=False, 
     return train_X, train_Y, val_X, val_Y, test_X, test_Y, max_val, scaler
 
 
-def masked_loss(y_pred, y_true, maskp=None, weight=None):
+def masked_loss(y_pred, y_true, maskp=None, weight=None, maxs=2, mins=1):
     flag = True
-    mask_true = (y_true > 0.01).float()
-    mask_pred = (y_pred > 0.01).float()
-    mask = torch.mul(mask_true, mask_pred)
-    if mask.mean() > 1e-6:
-        mask /= mask.mean()
-    else:
-        mask = (torch.ones(mask.shape) * 0.01).to(mask.device)
+    beishu = maxs - mins
     mae_loss = torch.abs(y_pred - y_true)
     mse_loss = torch.square(y_pred - y_true)
     y_true = torch.where(y_true.abs() < torch.tensor(1e-6, dtype=y_true.dtype, device=y_true.device),
@@ -496,8 +511,6 @@ def masked_loss(y_pred, y_true, maskp=None, weight=None):
     mape_loss = mae_pe / ytrue_pe.abs()
     mape_loss = torch.where(torch.isinf(mape_loss), torch.tensor(0, dtype=y_true.dtype, device=y_true.device),
                             mape_loss)
-    if maskp is not None:
-        mask = maskp
     if weight is None:
         mae_loss = mae_loss[:, torch.from_numpy(maskp).to(y_pred.device).reshape((-1))]
     else:
@@ -505,7 +518,6 @@ def masked_loss(y_pred, y_true, maskp=None, weight=None):
         mae_loss = mae_loss[:, mmmm]
         mae_loss = torch.mul(mae_loss.reshape(y_true.shape[0], -1), weight.repeat((y_true.shape[0], 1)))
     mse_loss = mse_loss[:, torch.from_numpy(maskp).to(y_pred.device).reshape((-1))]
-    # mape_loss = mape_loss.sum() / torch.count_nonzero(mape_loss)
     mae_loss[mae_loss != mae_loss] = 0
     mse_loss[mse_loss != mse_loss] = 0
     mape_loss[mape_loss != mape_loss] = 0

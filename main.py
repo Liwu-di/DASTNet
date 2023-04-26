@@ -5,8 +5,7 @@ import time
 import os
 import numpy as np
 import torch.optim as optim
-from utils.funcs import load_data, load_all_adj
-from utils.funcs import masked_loss
+from utils.funcs import *
 from utils.vec import generate_vector
 from model import DASTNet, Domain_classifier_DG
 from PaperCrawlerUtil.common_util import *
@@ -265,12 +264,15 @@ if args.labelrate > 100:
 adj_pems04, adj_pems07, adj_pems08 = load_all_adj(device)
 vec_pems04 = vec_pems07 = vec_pems08 = None, None, None
 dc = np.load("./data/DC/{}DC_{}.npy".format(args.dataname, args.datatype))
+dc, maxs, mins = min_max_normalize(dc)
 dcmask = dc.sum(0) > 0
 
 chi = np.load("./data/CHI/{}CHI_{}.npy".format(args.dataname, args.datatype))
+chi = min_max_normalize(chi)[0]
 chimask = chi.sum(0) > 0
 
 ny = np.load("./data/NY/{}NY_{}.npy".format(args.dataname, args.datatype))
+ny = min_max_normalize(ny)[0]
 nymask = ny.sum(0) > 0
 
 cur_dir = os.getcwd()
