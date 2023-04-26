@@ -4,10 +4,13 @@ import torch
 import numpy as np
 from .data import MyDataLoader
 from PaperCrawlerUtil.common_util import log
+
+
 class StandardScaler:
     """
     Standard the input
     """
+
     def __init__(self, mean, std):
         self.mean = mean
         self.std = std
@@ -18,6 +21,7 @@ class StandardScaler:
     def inverse_transform(self, data):
         return (data * self.std) + self.mean
 
+
 def add_self_loop(adj):
     # add self loop to an adjacency
     num_nodes = adj.shape[0]
@@ -25,21 +29,25 @@ def add_self_loop(adj):
         adj[i][i] = 1
     return adj
 
+
 def idx_2d2id(idx, shape):
     return idx[0] * shape[1] + idx[1]
+
 
 def idx_1d22d(idx, shape):
     idx0d = int(idx // shape[1])
     idx1d = int(idx % shape[1])
     return idx0d, idx1d
 
-def load_all_adj2(device):
 
+def load_all_adj2(device):
     adj_pems04 = get_adjacency_matrix(distance_df_filename="./data/PEMS04/PEMS04.csv", num_of_vertices=307)
     adj_pems07 = get_adjacency_matrix(distance_df_filename="./data/PEMS07/PEMS07.csv", num_of_vertices=883)
     adj_pems08 = get_adjacency_matrix(distance_df_filename="./data/PEMS08/PEMS08.csv", num_of_vertices=170)
 
     return torch.tensor(adj_pems04).to(device), torch.tensor(adj_pems07).to(device), torch.tensor(adj_pems08).to(device)
+
+
 def load_all_adj(device):
     dirs = "./data/{}/{}_roads.npy"
     ny, chi, dc = None, None, None
@@ -64,6 +72,7 @@ def load_all_adj(device):
             dc = t
 
     return torch.tensor(ny).to(device), torch.tensor(chi).to(device), torch.tensor(dc).to(device)
+
 
 def load_graphdata_channel2(args, feat_dir, time, scaler=None, visualize=False):
     """
@@ -106,7 +115,7 @@ def load_graphdata_channel2(args, feat_dir, time, scaler=None, visualize=False):
         import random
         new_train_size = int(train_size * args.labelrate / 100)
         start = random.randint(0, train_size - new_train_size - 1)
-        train_data = train_data[start:start+new_train_size]
+        train_data = train_data[start:start + new_train_size]
 
     train_X, train_Y, val_X, val_Y, test_X, test_Y = list(), list(), list(), list(), list(), list()
 
@@ -191,6 +200,8 @@ def load_graphdata_channel2(args, feat_dir, time, scaler=None, visualize=False):
         min_speed = min(min_xval, min_yval, min_xtest, min_ytest)
 
     return train_X, train_Y, val_X, val_Y, test_X, test_Y, max_val, scaler
+
+
 def load_data2(args, scaler=None, visualize=False, distribution=False):
     DATA_PATHS = {
         "4": {"feat": "./data/PEMS04/PEMS04.npz", "adj": "./data/PEMS04/PEMS04.csv"},
@@ -214,7 +225,9 @@ def load_data2(args, scaler=None, visualize=False, distribution=False):
         adj_dir = DATA_PATHS['8']['adj']
         num_of_vertices = 170
 
-    train_X, train_Y, val_X, val_Y, test_X, test_Y, max_speed, scaler = load_graphdata_channel2(args, feat_dir, time, scaler, visualize=visualize)
+    train_X, train_Y, val_X, val_Y, test_X, test_Y, max_speed, scaler = load_graphdata_channel2(args, feat_dir, time,
+                                                                                                scaler,
+                                                                                                visualize=visualize)
     train_dataloader = MyDataLoader(torch.FloatTensor(train_X), torch.FloatTensor(train_Y),
                                     batch_size=args.batch_size)
     val_dataloader = MyDataLoader(torch.FloatTensor(val_X), torch.FloatTensor(val_Y), batch_size=args.batch_size)
@@ -222,6 +235,7 @@ def load_data2(args, scaler=None, visualize=False, distribution=False):
     adj = get_adjacency_matrix(distance_df_filename=adj_dir, num_of_vertices=num_of_vertices)
 
     return train_dataloader, val_dataloader, test_dataloader, torch.tensor(adj), max_speed, scaler
+
 
 def load_data(args, scaler=None, visualize=False, distribution=False, cut=False):
     DATA_PATHS = {
@@ -250,7 +264,9 @@ def load_data(args, scaler=None, visualize=False, distribution=False, cut=False)
         adj_dir = DATA_PATHS['8']['adj']
         num_of_vertices = 1024
 
-    train_X, train_Y, val_X, val_Y, test_X, test_Y, max_speed, scaler = load_graphdata_channel1(args, time, scaler, visualize=visualize, cut=cut)
+    train_X, train_Y, val_X, val_Y, test_X, test_Y, max_speed, scaler = load_graphdata_channel1(args, time, scaler,
+                                                                                                visualize=visualize,
+                                                                                                cut=cut)
     train_dataloader = MyDataLoader(torch.FloatTensor(train_X), torch.FloatTensor(train_Y),
                                     batch_size=args.batch_size)
     val_dataloader = MyDataLoader(torch.FloatTensor(val_X), torch.FloatTensor(val_Y), batch_size=args.batch_size)
@@ -258,6 +274,7 @@ def load_data(args, scaler=None, visualize=False, distribution=False, cut=False)
     adj = 0
 
     return train_dataloader, val_dataloader, test_dataloader, torch.tensor(adj), max_speed, scaler
+
 
 def get_adjacency_matrix(distance_df_filename, num_of_vertices,
                          type_='connectivity', id_filename=None):
@@ -310,6 +327,7 @@ def get_adjacency_matrix(distance_df_filename, num_of_vertices,
                                  "connectivity or distance!")
     return A
 
+
 def load_distribution(feat_dir):
     file_data = np.load(feat_dir)
     data = file_data['data']
@@ -321,6 +339,7 @@ def load_distribution(feat_dir):
     data = np.array(data)
 
     return data
+
 
 def load_graphdata_channel1(args, feat_dir, time, scaler=None, visualize=False, cut=False):
     """
@@ -368,7 +387,7 @@ def load_graphdata_channel1(args, feat_dir, time, scaler=None, visualize=False, 
         import random
         new_train_size = int(train_size * args.labelrate / 100)
         start = random.randint(0, train_size - new_train_size - 1)
-        train_data = train_data[start:start+new_train_size]
+        train_data = train_data[start:start + new_train_size]
 
     train_X, train_Y, val_X, val_Y, test_X, test_Y = list(), list(), list(), list(), list(), list()
 
@@ -469,25 +488,14 @@ def masked_loss(y_pred, y_true, maskp=None, weight=None):
         mask = (torch.ones(mask.shape) * 0.01).to(mask.device)
     mae_loss = torch.abs(y_pred - y_true)
     mse_loss = torch.square(y_pred - y_true)
-    y_true = torch.where(y_true.abs() < torch.tensor(1e-6, dtype=y_true.dtype, device=y_true.device), torch.tensor(0, dtype=y_true.dtype, device=y_true.device), y_true)
-    # a = []
-    # for i in range(10, 100, 5):
-    #     y_true = y_true + (torch.ones(y_true.shape) * float(i / 100)).to(y_pred.device)
-    #     mae_pe = mae_loss[:, torch.from_numpy(maskp).to(y_pred.device).reshape((-1))]
-    #     ytrue_pe = y_true[:, torch.from_numpy(maskp).to(y_pred.device).reshape((-1))]
-    #     mape_loss = mae_pe / ytrue_pe.abs()
-    #     a.append(mape_loss.mean().item())
-    # if flag:
-    #     print(a)
-    #     flag = False
-    # y_true = y_true + (torch.ones(y_true.shape) * float(5)).to(y_pred.device)
+    y_true = torch.where(y_true.abs() < torch.tensor(1e-6, dtype=y_true.dtype, device=y_true.device),
+                         torch.tensor(0, dtype=y_true.dtype, device=y_true.device), y_true)
+
     mae_pe = mae_loss[:, torch.from_numpy(maskp).to(y_pred.device).reshape((-1))]
     ytrue_pe = y_true[:, torch.from_numpy(maskp).to(y_pred.device).reshape((-1))]
     mape_loss = mae_pe / ytrue_pe.abs()
-    mape_loss = torch.where(mape_loss.abs() > torch.tensor(1, dtype=mape_loss.dtype, device=y_true.device),
-                         torch.tensor(0, dtype=mape_loss.dtype, device=mape_loss.device), mape_loss)
-    mape_loss = mae_loss / y_true.abs()
-    mape_loss = torch.where(torch.isinf(mape_loss), torch.tensor(0, dtype=y_true.dtype, device=y_true.device), mape_loss)
+    mape_loss = torch.where(torch.isinf(mape_loss), torch.tensor(0, dtype=y_true.dtype, device=y_true.device),
+                            mape_loss)
     if maskp is not None:
         mask = maskp
     if weight is None:
@@ -497,13 +505,12 @@ def masked_loss(y_pred, y_true, maskp=None, weight=None):
         mae_loss = mae_loss[:, mmmm]
         mae_loss = torch.mul(mae_loss.reshape(y_true.shape[0], -1), weight.repeat((y_true.shape[0], 1)))
     mse_loss = mse_loss[:, torch.from_numpy(maskp).to(y_pred.device).reshape((-1))]
-    #mape_loss = mape_loss.sum() / torch.count_nonzero(mape_loss)
+    # mape_loss = mape_loss.sum() / torch.count_nonzero(mape_loss)
     mae_loss[mae_loss != mae_loss] = 0
     mse_loss[mse_loss != mse_loss] = 0
     mape_loss[mape_loss != mape_loss] = 0
-
+    print(mae_loss.mean(), torch.sqrt(mse_loss.mean()), mape_loss.sum() / (maskp.sum() * y_true.shape[0]), mape_loss.mean())
     return mae_loss.mean(), torch.sqrt(mse_loss.mean()), mape_loss.sum() / (maskp.sum() * y_true.shape[0])
-
 
 
 def masked_loss2(y_pred, y_true):
@@ -514,7 +521,8 @@ def masked_loss2(y_pred, y_true):
         mask /= mask.mean()
     mae_loss = torch.abs(y_pred - y_true)
     mse_loss = torch.square(y_pred - y_true)
-    y_true = torch.where(y_true < torch.tensor(1e-6, dtype=y_true.dtype, device=y_true.device), torch.tensor(1, dtype=y_true.dtype, device=y_true.device), y_true)
+    y_true = torch.where(y_true < torch.tensor(1e-6, dtype=y_true.dtype, device=y_true.device),
+                         torch.tensor(1, dtype=y_true.dtype, device=y_true.device), y_true)
     mape_loss = mae_loss / y_true
     mae_loss = mae_loss * mask
     mse_loss = mse_loss * mask
@@ -526,16 +534,13 @@ def masked_loss2(y_pred, y_true):
     return mae_loss.mean(), torch.sqrt(mse_loss.mean()), mape_loss.mean()
 
 
-
-
 def get_target_loader(args):
-
     train_X, train_Y, val_X, val_Y, test_X, test_Y, max_speed, scaler = load_graphdata_channel1(args, "", False,
                                                                                                 None,
                                                                                                 visualize=False)
     log([i.shape for i in [train_X, train_Y, val_X, val_Y, test_X, test_Y]])
     ttld = MyDataLoader(torch.FloatTensor(train_X), torch.FloatTensor(train_Y),
-                                    batch_size=args.batch_size)
+                        batch_size=args.batch_size)
     tvld = MyDataLoader(torch.FloatTensor(val_X), torch.FloatTensor(val_Y), batch_size=args.batch_size)
     ttestld = MyDataLoader(torch.FloatTensor(test_X), torch.FloatTensor(test_Y), batch_size=args.batch_size)
 

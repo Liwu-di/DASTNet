@@ -126,6 +126,10 @@ def train(dur, model, optimizer, total_step, start_step):
         if type == 'pretrain':
             train_correct = pems04_correct + pems08_correct
 
+        for i in range(len(scaler.inverse_transform(label).flatten())):
+            if scaler.inverse_transform(label).flatten()[i] < 1e-6:
+                log(scaler.inverse_transform(label).flatten()[i], label.flatten()[i])
+
         mae_train, rmse_train, mape_train = masked_loss(scaler.inverse_transform(pred), scaler.inverse_transform(label),
                                                         maskp=mask)
 
@@ -188,7 +192,6 @@ def test():
         pred = model(vec_pems04, vec_pems07, vec_pems08, feat, True, args.need_road)
         pred = pred.transpose(1, 2).reshape((-1, feat.size(2)))
         label = label.reshape((-1, label.size(2)))
-
         mae_test, rmse_test, mape_test = masked_loss(scaler.inverse_transform(pred), scaler.inverse_transform(label),
                                                      maskp=mask)
 
