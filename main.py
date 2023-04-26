@@ -269,6 +269,8 @@ vec_pems04 = vec_pems07 = vec_pems08 = None, None, None
 dc = np.load("./data/DC/{}DC_{}.npy".format(args.dataname, args.datatype))
 dc, maxs, mins = min_max_normalize(dc)
 print(maxs, mins)
+mins=1
+maxs=2
 dcmask = dc.sum(0) > 0
 
 chi = np.load("./data/CHI/{}CHI_{}.npy".format(args.dataname, args.datatype))
