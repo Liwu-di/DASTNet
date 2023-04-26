@@ -268,6 +268,7 @@ adj_pems04, adj_pems07, adj_pems08 = load_all_adj(device)
 vec_pems04 = vec_pems07 = vec_pems08 = None, None, None
 dc = np.load("./data/DC/{}DC_{}.npy".format(args.dataname, args.datatype))
 dc, maxs, mins = min_max_normalize(dc)
+print(maxs, mins)
 dcmask = dc.sum(0) > 0
 
 chi = np.load("./data/CHI/{}CHI_{}.npy".format(args.dataname, args.datatype))
