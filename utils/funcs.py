@@ -501,8 +501,8 @@ def load_graphdata_channel1(args, feat_dir, time, scaler=None, visualize=False, 
 def masked_loss(y_pred, y_true, maskp=None, weight=None, maxs=2, mins=1):
     flag = True
     beishu = maxs - mins
-    y_pred = y_pred * torch.Tensor(beishu).to(y_pred.device)
-    y_true = y_true * torch.Tensor(beishu).to(y_pred.device)
+    y_pred = y_pred * torch.Tensor([beishu]).to(y_pred.device)
+    y_true = y_true * torch.Tensor([beishu]).to(y_pred.device)
     mae_loss = torch.abs(y_pred - y_true)
     mse_loss = torch.square(y_pred - y_true)
     y_true = torch.where(y_true.abs() < torch.tensor(1e-6, dtype=y_true.dtype, device=y_true.device),
