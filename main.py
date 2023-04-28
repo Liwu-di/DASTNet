@@ -269,6 +269,8 @@ vec_pems04 = vec_pems07 = vec_pems08 = None, None, None
 dc = np.load("./data/DC/{}DC_{}.npy".format(args.dataname, args.datatype))
 dc, maxs, mins = min_max_normalize(dc)
 print(maxs, mins)
+maxs = 2
+mins = 1
 
 dcmask = dc.sum(0) > 0
 
@@ -454,7 +456,7 @@ if args.labelrate != 0:
     optimizer.load_state_dict(test_state['optim'])
 
 test_mae, test_rmse, test_mape = test()
-print(f'mae: {test_mae * (maxs - mins): .4f}, rmse: {test_rmse * (maxs - mins): .4f}, mape: {test_mape * 100: .4f}\n\n')
+print(f'mae: {test_mae : .4f}, rmse: {test_rmse: .4f}, mape: {test_mape * 100: .4f}\n\n')
 if args.c != "default":
     if args.need_remark == 1:
         record.update(record_id, get_timestamp(),
