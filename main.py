@@ -54,6 +54,7 @@ def arg_parse(parser):
     parser.add_argument("--fine_epoch", type=int, default=80)
     parser.add_argument("--need_road", type=bool, default=True)
     parser.add_argument("--cut_data", type=int, default=3312)
+    parser.add_argument("--normal", type=int, default=2)
     return parser.parse_args()
 
 
@@ -252,6 +253,23 @@ def model_train(args, model, optimizer):
 
 
 args = arg_parse(argparse.ArgumentParser())
+if args.normal == "2":
+    class StandardScaler:
+        """
+        Standard the input
+        """
+
+        def __init__(self, mean, std):
+            self.mean = mean
+            self.std = std
+
+        def transform(self, data):
+            return (data - self.mean) / self.std
+
+
+        def inverse_transform(self, data):
+            return (data * self.std) + self.mean
+
 device = torch.device("cuda:" + str(args.device) if torch.cuda.is_available() else "cpu")
 print(f'device: {device}')
 if args.c != "default":
@@ -269,10 +287,9 @@ vec_pems04 = vec_pems07 = vec_pems08 = None, None, None
 dc = np.load("./data/DC/{}DC_{}.npy".format(args.dataname, args.datatype))
 dc, maxs, mins = min_max_normalize(dc)
 print(maxs, mins)
-__ = maxs
-_ = mins
-maxs = 2
-mins = 1
+if args.normal != "1":
+    maxs = 2
+    mins = 1
 
 dcmask = dc.sum(0) > 0
 
@@ -458,7 +475,7 @@ if args.labelrate != 0:
     optimizer.load_state_dict(test_state['optim'])
 
 test_mae, test_rmse, test_mape = test()
-print(f'mae: {test_mae * (__ - _): .4f}, rmse: {test_rmse * (__ - _): .4f}, mape: {test_mape * 100: .4f}\n\n')
+print(f'mae: {test_mae * (maxs - mins): .4f}, rmse: {test_rmse * (maxs - mins): .4f}, mape: {test_mape * 100: .4f}\n\n')
 if args.c != "default":
     if args.need_remark == 1:
         record.update(record_id, get_timestamp(),
