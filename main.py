@@ -196,7 +196,7 @@ def test():
                                                      maskp=mask, maxs=maxs, mins=mins)
         mae_test = mae_test * (maxs - mins)
         rmse_test = rmse_test * (maxs - mins)
-        mape_test = mape_test * (maxs - mins)
+        mape_test = mape_test
         test_mae.append(mae_test.item())
         test_rmse.append(rmse_test.item())
         test_mape.append(mape_test.item())
