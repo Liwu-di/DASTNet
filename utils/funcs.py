@@ -378,7 +378,7 @@ def load_graphdata_channel1(args, feat_dir, time, scaler=None, visualize=False, 
         city = "BJ"
     dirs = "./data/{}/{}{}_{}.npy".format(city, args.dataname, city, args.datatype)
     file_data = np.load(dirs)
-    #file_data = min_max_normalize(file_data)[0]
+    file_data = min_max_normalize(file_data)[0]
     file_data = file_data[0: args.cut_data, :, :]
     data = file_data.reshape((file_data.shape[0], file_data.shape[1] * file_data.shape[2]))
 
@@ -522,7 +522,7 @@ def masked_loss(y_pred, y_true, maskp=None, weight=None, maxs=2, mins=1):
     mse_loss[mse_loss != mse_loss] = 0
     mape_loss[mape_loss != mape_loss] = 0
 
-    return mae_loss.mean(), torch.sqrt(mse_loss.mean()), mape_loss.sum() / (y_true > 1e-6).sum()
+    return mae_loss.mean(), torch.sqrt(mse_loss.mean()), mape_loss.mean()
 
 
 def masked_loss2(y_pred, y_true):
