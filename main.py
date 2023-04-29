@@ -94,7 +94,8 @@ def train(dur, model, optimizer, total_step, start_step):
         if args.model not in ['DCRNN', 'STGCN', 'HA']:
             if type == 'pretrain':
                 pred, shared_pems04_feat, shared_pems07_feat, shared_pems08_feat = model(vec_pems04, vec_pems07,
-                                                                                         vec_pems08, feat, False, args.need_road)
+                                                                                         vec_pems08, feat, False,
+                                                                                         args.need_road)
             elif type == 'fine-tune':
                 pred = model(vec_pems04, vec_pems07, vec_pems08, feat, False, args.need_road)
 
@@ -125,8 +126,6 @@ def train(dur, model, optimizer, total_step, start_step):
 
         if type == 'pretrain':
             train_correct = pems04_correct + pems08_correct
-
-
 
         mae_train, rmse_train, mape_train = masked_loss(scaler.inverse_transform(pred), scaler.inverse_transform(label),
                                                         maskp=mask, maxs=maxs, mins=mins)
@@ -193,16 +192,18 @@ def test():
         pred = model(vec_pems04, vec_pems07, vec_pems08, feat, True, args.need_road)
         pred = pred.transpose(1, 2).reshape((-1, feat.size(2)))
         label = label.reshape((-1, label.size(2)))
-        mae_test, rmse_test, mape_test = masked_loss(scaler.inverse_transform(pred), scaler.inverse_transform(label),
+        # mae_test, rmse_test, mape_test = masked_loss(scaler.inverse_transform(pred), scaler.inverse_transform(label),
+        #                                              maskp=mask, maxs=maxs, mins=mins)
+        mae_test, rmse_test, mape_test = masked_loss2(scaler.inverse_transform(pred), scaler.inverse_transform(label),
                                                      maskp=mask, maxs=maxs, mins=mins)
-        mae_test = mae_test * (maxs - mins)
-        rmse_test = rmse_test * (maxs - mins)
+        mae_test = mae_test
+        rmse_test = rmse_test
         mape_test = mape_test
         test_mae.append(mae_test.item())
         test_rmse.append(rmse_test.item())
         test_mape.append(mape_test.item())
 
-    test_rmse = np.mean(test_rmse)
+    test_rmse = np.sqrt(np.mean(test_rmse))
     test_mae = np.mean(test_mae)
     test_mape = np.mean(test_mape)
 
@@ -265,7 +266,6 @@ if args.normal == "2":
 
         def transform(self, data):
             return (data - self.mean) / self.std
-
 
         def inverse_transform(self, data):
             return (data * self.std) + self.mean
