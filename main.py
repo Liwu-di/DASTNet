@@ -192,10 +192,10 @@ def test():
         pred = model(vec_pems04, vec_pems07, vec_pems08, feat, True, args.need_road)
         pred = pred.transpose(1, 2).reshape((-1, feat.size(2)))
         label = label.reshape((-1, label.size(2)))
-        # mae_test, rmse_test, mape_test = masked_loss(scaler.inverse_transform(pred), scaler.inverse_transform(label),
-        #                                              maskp=mask, maxs=maxs, mins=mins)
-        mae_test, rmse_test, mape_test = masked_loss2(scaler.inverse_transform(pred), scaler.inverse_transform(label),
+        mae_test, rmse_test, mape_test = masked_loss(scaler.inverse_transform(pred), scaler.inverse_transform(label),
                                                      maskp=mask, maxs=maxs, mins=mins)
+        # mae_test, rmse_test, mape_test = masked_loss2(scaler.inverse_transform(pred), scaler.inverse_transform(label),
+        #                                              maskp=mask, maxs=maxs, mins=mins)
         mae_test = mae_test
         rmse_test = rmse_test
         mape_test = mape_test
