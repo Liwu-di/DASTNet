@@ -555,6 +555,26 @@ def masked_loss2(y_pred, y_true, maskp=None, weight=None, maxs=2, mins=1):
 
 
 
+def masked_loss0(y_pred, y_true):
+    mask_true = (y_true > 0.01).float()
+    mask_pred = (y_pred > 0.01).float()
+    mask = torch.mul(mask_true, mask_pred)
+    if mask.mean() < 1e-6:
+        mask = torch.ones(mask.shape).type_as(mask) * torch.Tensor([1.5]).type_as(mask)
+    mask /= mask.mean()
+    mae_loss = torch.abs(y_pred - y_true)
+    mse_loss = torch.square(y_pred - y_true)
+    mape_loss = mae_loss / y_true
+    mae_loss = mae_loss * mask
+    mse_loss = mse_loss * mask
+    mape_loss = mape_loss * mask
+    mae_loss[mae_loss != mae_loss] = 0
+    mse_loss[mse_loss != mse_loss] = 0
+    mape_loss[mape_loss != mape_loss] = 0
+
+    return mae_loss.mean(), torch.sqrt(mse_loss.mean()), mape_loss.mean()
+
+
 def get_target_loader(args):
     train_X, train_Y, val_X, val_Y, test_X, test_Y, max_speed, scaler = load_graphdata_channel1(args, "", False,
                                                                                                 None,
