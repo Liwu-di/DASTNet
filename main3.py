@@ -234,25 +234,29 @@ def model_train(args, model, optimizer):
         log(f'Epoch {epoch} | acc_train: {train_acc: .4f} | mae_train: {mae_train: .4f} | rmse_train: {rmse_train: .4f} | mae_val: {mae_val: .4f} | rmse_val: {rmse_val: .4f} | mae_test: {mae_test: .4f} | rmse_test: {rmse_test: .4f} | mape_test: {mape_test: .4f} | Time(s) {dur[-1]: .4f}')
         epoch += 1
         acc.append(train_acc)
-        if mae_val <= best:
-            if type == 'fine-tune' and mae_val > 0.001:
-                best = mae_val
-                state = dict([('model', copy.deepcopy(model.state_dict())),
-                              ('optim', copy.deepcopy(optimizer.state_dict())),
-                              ('domain_classifier', copy.deepcopy(domain_classifier.state_dict()))])
-                cnt = 0
-            elif type == 'pretrain':
-                best = mae_val
-                state = dict([('model', copy.deepcopy(model.state_dict())),
-                              ('optim', copy.deepcopy(optimizer.state_dict())),
-                              ('domain_classifier', copy.deepcopy(domain_classifier.state_dict()))])
-                cnt = 0
-        else:
-            cnt += 1
-        if cnt == args.patience or epoch > args.epoch:
-            print(f'Stop!!')
-            print(f'Avg acc: {np.mean(acc)}')
-            break
+        if epoch == args.epoch:
+            state = dict([('model', copy.deepcopy(model.state_dict())),
+                                                 ('optim', copy.deepcopy(optimizer.state_dict())),
+                                                 ('domain_classifier', copy.deepcopy(domain_classifier.state_dict()))])
+        # if mae_val <= best:
+        #     if type == 'fine-tune' and mae_val > 0.001:
+        #         best = mae_val
+        #         state = dict([('model', copy.deepcopy(model.state_dict())),
+        #                       ('optim', copy.deepcopy(optimizer.state_dict())),
+        #                       ('domain_classifier', copy.deepcopy(domain_classifier.state_dict()))])
+        #         cnt = 0
+        #     elif type == 'pretrain':
+        #         best = mae_val
+        #         state = dict([('model', copy.deepcopy(model.state_dict())),
+        #                       ('optim', copy.deepcopy(optimizer.state_dict())),
+        #                       ('domain_classifier', copy.deepcopy(domain_classifier.state_dict()))])
+        #         cnt = 0
+        # else:
+        #     cnt += 1
+        # if cnt == args.patience or epoch > args.epoch:
+        #     print(f'Stop!!')
+        #     print(f'Avg acc: {np.mean(acc)}')
+        #     break
     print("Optimization Finished!")
     return state
 
