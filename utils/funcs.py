@@ -401,7 +401,7 @@ def load_graphdata_channel1(args, feat_dir, time, scaler=None, visualize=False, 
     pre_len = args.pre_len
     split_ratio = args.split_ratio
     train_size = int(time_len * split_ratio)
-    val_size = int(time_len * (1 - split_ratio) / 3)
+    val_size = int(time_len * (1 - split_ratio) / 2)
     train_data = data[:train_size]
     val_data = data[train_size:train_size + val_size]
     test_data = data[train_size + val_size:time_len]
