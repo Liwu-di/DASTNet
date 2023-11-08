@@ -6,6 +6,8 @@
 # @Email   : liwudi@liwudi.fun
 # @Info    : 3 source city DAST
 import argparse
+import random
+
 import torch
 import copy
 import time
@@ -416,14 +418,15 @@ bak_test = args.test
 type = 'pretrain'
 pretrain_model_path = os.path.join('{}'.format(cur_dir), 'pretrained', 'transfer_models',
                                    '{}'.format(args.dataset), '{}_prelen'.format(args.pre_len),
-                                   'flow_model4_{}_epoch_{}{}{}{}{}{}{}{}.pkl'.format(args.model, args.epoch,
-                                                                                      args.dataname,
-                                                                                      args.datatype,
-                                                                                      str(args.learning_rate),
-                                                                                      str(args.batch_size),
-                                                                                      str(args.split_ratio),
-                                                                                      args.seq_len,
-                                                                                      args.pre_len))
+                                   'flow_model4_{}_epoch_{}{}{}{}{}{}{}{}{}.pkl'.format(args.model, args.epoch,
+                                                                                        args.dataname,
+                                                                                        args.datatype,
+                                                                                        str(args.learning_rate),
+                                                                                        str(args.batch_size),
+                                                                                        str(args.split_ratio),
+                                                                                        args.seq_len,
+                                                                                        args.pre_len,
+                                                                                        str(random.random() * 1000000)))
 
 a = pretrain_model_path.split(os.path.sep)
 b = []

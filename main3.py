@@ -6,6 +6,8 @@
 # @Email   : liwudi@liwudi.fun
 # @Info    : 单城市
 import argparse
+import random
+
 import torch
 import copy
 import time
@@ -237,8 +239,8 @@ def model_train(args, model, optimizer):
         if type == "pretrain":
             if epoch == args.epoch:
                 state = dict([('model', copy.deepcopy(model.state_dict())),
-                                                     ('optim', copy.deepcopy(optimizer.state_dict())),
-                                                     ('domain_classifier', copy.deepcopy(domain_classifier.state_dict()))])
+                              ('optim', copy.deepcopy(optimizer.state_dict())),
+                              ('domain_classifier', copy.deepcopy(domain_classifier.state_dict()))])
         else:
             if mae_val <= best:
                 if type == 'fine-tune' and mae_val > 0.001:
@@ -261,7 +263,6 @@ def model_train(args, model, optimizer):
                 break
     print("Optimization Finished!")
     return state
-
 
 
 args = arg_parse(argparse.ArgumentParser())
@@ -299,7 +300,6 @@ pems07_emb_path = os.path.join('{}'.format(cur_dir), 'embeddings', 'node2vec', '
                                '{}{}_vecdim.pkl'.format(args.vec_dim, args.datatype))
 pems08_emb_path = os.path.join('{}'.format(cur_dir), 'embeddings', 'node2vec', 'pems08',
                                '{}{}_vecdim.pkl'.format(args.vec_dim, args.datatype))
-
 
 for i in [pems04_emb_path, pems07_emb_path, pems08_emb_path]:
     a = i.split("/")
@@ -367,9 +367,10 @@ bak_test = args.test
 type = 'pretrain'
 pretrain_model_path = os.path.join('{}'.format(cur_dir), 'pretrained', 'transfer_models',
                                    '{}'.format(args.dataset), '{}_prelen'.format(args.pre_len),
-                                   'flow_model4_{}_epoch_{}{}{}.pkl'.format(args.model, args.epoch,
-                                                                            args.dataname,
-                                                                            args.datatype))
+                                   'flow_model4_{}_epoch_{}{}{}{}.pkl'.format(args.model, args.epoch,
+                                                                              args.dataname,
+                                                                              args.datatype,
+                                                                              str(random.random()*100000000)))
 
 a = pretrain_model_path.split("/")
 b = []

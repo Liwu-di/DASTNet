@@ -1,4 +1,6 @@
 import argparse
+import random
+
 import torch
 import copy
 import time
@@ -193,7 +195,7 @@ def test():
         pred = pred.transpose(1, 2).reshape((-1, feat.size(2)))
         label = label.reshape((-1, label.size(2)))
         mae_test, rmse_test, mape_test = masked_loss(scaler.inverse_transform(pred), scaler.inverse_transform(label),
-                                                    maskp=mask, maxs=maxs, mins=mins)
+                                                     maskp=mask, maxs=maxs, mins=mins)
         # mae_test, rmse_test, mape_test = masked_loss0(scaler.inverse_transform(pred), scaler.inverse_transform(label)
         #                                              )
         # mae_test, rmse_test, mape_test = masked_loss2(scaler.inverse_transform(pred), scaler.inverse_transform(label),
@@ -236,8 +238,8 @@ def model_train(args, model, optimizer):
         if type == "pretrain":
             if epoch == args.epoch:
                 state = dict([('model', copy.deepcopy(model.state_dict())),
-                                                     ('optim', copy.deepcopy(optimizer.state_dict())),
-                                                     ('domain_classifier', copy.deepcopy(domain_classifier.state_dict()))])
+                              ('optim', copy.deepcopy(optimizer.state_dict())),
+                              ('domain_classifier', copy.deepcopy(domain_classifier.state_dict()))])
         else:
             if mae_val <= best:
                 if type == 'fine-tune' and mae_val > 0.001:
@@ -387,14 +389,15 @@ bak_test = args.test
 type = 'pretrain'
 pretrain_model_path = os.path.join('{}'.format(cur_dir), 'pretrained', 'transfer_models',
                                    '{}'.format(args.dataset), '{}_prelen'.format(args.pre_len),
-                                   'flow_model4_{}_epoch_{}{}{}{}{}{}{}{}.pkl'.format(args.model, args.epoch,
-                                                                                      args.dataname,
-                                                                                      args.datatype,
-                                                                                      str(args.learning_rate),
-                                                                                      str(args.batch_size),
-                                                                                      str(args.split_ratio),
-                                                                                      args.seq_len,
-                                                                                      args.pre_len))
+                                   'flow_model4_{}_epoch_{}{}{}{}{}{}{}{}{}.pkl'.format(args.model, args.epoch,
+                                                                                        args.dataname,
+                                                                                        args.datatype,
+                                                                                        str(args.learning_rate),
+                                                                                        str(args.batch_size),
+                                                                                        str(args.split_ratio),
+                                                                                        args.seq_len,
+                                                                                        args.pre_len,
+                                                                                        str(random.random() * 100000000)))
 
 a = pretrain_model_path.split("/")
 b = []
