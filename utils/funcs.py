@@ -381,8 +381,9 @@ def load_graphdata_channel1(args, feat_dir, time, scaler=None, visualize=False, 
     print("is normal?")
     if args.normal == 1:
 
-        print("normal")
-        file_data = min_max_normalize(file_data)[0]
+
+        file_data, ma, mi = min_max_normalize(file_data)
+        print("normal", ma, mi)
     file_data = file_data[0: args.cut_data, :, :]
     data = file_data.reshape((file_data.shape[0], file_data.shape[1] * file_data.shape[2]))
 
