@@ -379,6 +379,7 @@ def load_graphdata_channel1(args, feat_dir, time, scaler=None, visualize=False, 
     dirs = "./data/{}/{}{}_{}.npy".format(city, args.dataname, city, args.datatype)
     file_data = np.load(dirs)
     if args.normal == "1":
+        print("normal")
         file_data = min_max_normalize(file_data)[0]
     file_data = file_data[0: args.cut_data, :, :]
     data = file_data.reshape((file_data.shape[0], file_data.shape[1] * file_data.shape[2]))
