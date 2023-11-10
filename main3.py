@@ -208,9 +208,9 @@ def test():
         test_mae.append(mae_test.item())
         test_rmse.append(rmse_test.item())
         test_mape.append(mape_test.item())
-    ll = len(test_rmse)
+
     test_rmse = np.sum(test_rmse)
-    test_rmse = np.sqrt(np.sum(test_rmse)) / ll
+    test_rmse = np.sqrt(np.mean(test_rmse))
     test_mae = np.mean(test_mae)
     test_mape = np.mean(test_mape)
 
