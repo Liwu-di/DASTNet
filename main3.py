@@ -208,12 +208,13 @@ def test():
         test_mae.append(mae_test.item())
         test_rmse.append(rmse_test.item())
         test_mape.append(mape_test.item())
-
-    test_rmse = np.mean(test_rmse)
+    ll = len(test_rmse)
+    test_rmse = np.sum(test_rmse)
+    test_rmse = np.sqrt(test_rmse) / ll
     test_mae = np.mean(test_mae)
     test_mape = np.mean(test_mape)
 
-    return test_mae, np.sqrt(test_rmse), test_mape
+    return test_mae, test_rmse, test_mape
 
 
 def model_train(args, model, optimizer):
