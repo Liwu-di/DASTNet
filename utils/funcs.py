@@ -523,11 +523,10 @@ def masked_loss(y_pred, y_true, maskp=None, weight=None, maxs=2, mins=1):
     mae_loss = mae_loss[:, torch.from_numpy(maskp).to(y_pred.device).reshape((-1))]
     mae_loss[mae_loss != mae_loss] = 0
     mse_loss[mse_loss != mse_loss] = 0
-    print(mae_loss.shape, mse_loss.shape)
     mape_loss[mape_loss != mape_loss] = 0
 
     # return mae_loss.mean(), torch.sqrt(mse_loss.mean()), mape_loss.mean()
-    return mae_loss.mean(), torch.sqrt(mse_loss.mean()), mape_loss.sum() / (y_true > 1e-6).sum()
+    return mae_loss.mean(), mse_loss.mean(), mape_loss.sum() / (y_true > 1e-6).sum()
 
 
 def masked_loss2(y_pred, y_true, maskp=None, weight=None, maxs=2, mins=1):

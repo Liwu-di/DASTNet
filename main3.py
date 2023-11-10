@@ -213,7 +213,7 @@ def test():
     test_mae = np.mean(test_mae)
     test_mape = np.mean(test_mape)
 
-    return test_mae, test_rmse, test_mape
+    return test_mae, np.sqrt(test_rmse), test_mape
 
 
 def model_train(args, model, optimizer):
