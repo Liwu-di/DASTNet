@@ -515,15 +515,15 @@ def masked_loss(y_pred, y_true, maskp=None, weight=None, maxs=2, mins=1):
     mape_loss = mae_pe / ytrue_pe.abs()
     mape_loss = torch.where(torch.isinf(mape_loss), torch.tensor(0, dtype=y_true.dtype, device=y_true.device),
                             mape_loss)
-    if weight is None:
-        mae_loss = mae_loss[:, torch.from_numpy(maskp).to(y_pred.device).reshape((-1))]
-    else:
-        mmmm = (torch.from_numpy(maskp).to(y_pred.device).reshape((-1)))
-        mae_loss = mae_loss[:, mmmm]
-        mae_loss = torch.mul(mae_loss.reshape(y_true.shape[0], -1), weight.repeat((y_true.shape[0], 1)))
+
+    mmmm = (torch.from_numpy(maskp).to(y_pred.device).reshape((-1)))
+    # mae_loss = mae_loss[:, mmmm]
+    # mae_loss = torch.mul(mae_loss.reshape(y_true.shape[0], -1), weight.repeat((y_true.shape[0], 1)))
     mse_loss = mse_loss[:, torch.from_numpy(maskp).to(y_pred.device).reshape((-1))]
+    mae_loss = mae_loss[:, torch.from_numpy(maskp).to(y_pred.device).reshape((-1))]
+    print(mse_loss.shape, mae_loss.shape)
     mae_loss[mae_loss != mae_loss] = 0
-    mse_loss[mse_loss !=  mse_loss] = 0
+    mse_loss[mse_loss != mse_loss] = 0
     mape_loss[mape_loss != mape_loss] = 0
 
     # return mae_loss.mean(), torch.sqrt(mse_loss.mean()), mape_loss.mean()
