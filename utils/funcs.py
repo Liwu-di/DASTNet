@@ -36,12 +36,12 @@ class StandardScaler:
         self.std = std
 
     def transform(self, data):
-        #return (data - self.mean) / self.std
-        return data
+        return (data - self.mean) / self.std
+        # return data
 
     def inverse_transform(self, data):
-        #return (data * self.std) + self.mean
-        return data
+        return (data * self.std) + self.mean
+        # return data
 
 def add_self_loop(adj):
     # add self loop to an adjacency
@@ -521,7 +521,6 @@ def masked_loss(y_pred, y_true, maskp=None, weight=None, maxs=2, mins=1):
     # mae_loss = torch.mul(mae_loss.reshape(y_true.shape[0], -1), weight.repeat((y_true.shape[0], 1)))
     mse_loss = mse_loss[:, torch.from_numpy(maskp).to(y_pred.device).reshape((-1))]
     mae_loss = mae_loss[:, torch.from_numpy(maskp).to(y_pred.device).reshape((-1))]
-    print(mse_loss.shape, mae_loss.shape)
     mae_loss[mae_loss != mae_loss] = 0
     mse_loss[mse_loss != mse_loss] = 0
     mape_loss[mape_loss != mape_loss] = 0
