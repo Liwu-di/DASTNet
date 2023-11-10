@@ -210,7 +210,7 @@ def test():
         test_mape.append(mape_test.item())
     ll = len(test_rmse)
     test_rmse = np.sum(test_rmse)
-    test_rmse = np.sqrt(test_rmse) / ll
+    test_rmse = np.sqrt(np.mean(test_rmse)) / ll
     test_mae = np.mean(test_mae)
     test_mape = np.mean(test_mape)
 
