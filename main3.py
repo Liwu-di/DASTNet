@@ -141,11 +141,11 @@ def train(dur, model, optimizer, total_step, start_step):
                                                         maskp=mask)
 
         if type == 'pretrain' and args.need_road:
-            loss = rmse_train + args.beta * (args.theta * domain_loss)
+            loss = rmse_train + mae_train + args.beta * (args.theta * domain_loss)
         elif type == 'pretrain':
-            loss = rmse_train
+            loss = rmse_train + mae_train
         elif type == 'fine-tune':
-            loss = rmse_train
+            loss = rmse_train + mae_train
 
         loss.backward()
         optimizer.step()
