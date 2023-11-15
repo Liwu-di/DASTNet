@@ -471,7 +471,7 @@ elif args.dataset == '7':
 elif args.dataset == '8':
     g = vec_pems08
 if args.dataname == "Bike":
-    args.split_ratio = 0.9
+    args.split_ratio = 0.87
 else:
     args.split_ratio = 0.85
 train_dataloader, val_dataloader, test_dataloader, adj, max_speed, scaler = load_data(args, cut=True)
