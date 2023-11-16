@@ -473,7 +473,7 @@ elif args.dataset == '8':
 if args.dataname == "Bike":
     args.split_ratio = 0.86
 else:
-    args.split_ratio = 0.85
+    args.split_ratio = 0.82
 train_dataloader, val_dataloader, test_dataloader, adj, max_speed, scaler = load_data(args, cut=True)
 model = DASTNet(input_dim=args.vec_dim, hidden_dim=args.hidden_dim, encode_dim=args.enc_dim,
                 device=device, batch_size=args.batch_size, etype=args.etype, pre_len=args.pre_len,
